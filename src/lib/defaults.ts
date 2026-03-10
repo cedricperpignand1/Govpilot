@@ -91,6 +91,14 @@ export const DEFAULT_EXCLUDE_KEYWORDS = [
   "medical services", "clinical", "healthcare services",
   // Bond requirements (small business barrier)
   "bonding", "performance bond", "surety bond",
+  // Software & IT services
+  "software", "IT", "cloud", "cyber", "SaaS", "platform",
+  // Training & support
+  "training", "support services",
+  // Staffing & services
+  "staffing", "medical staffing",
+  // Facility services
+  "janitorial services", "grounds maintenance", "HVAC service", "repair service",
 ].join(", ");
 
 /** Returns today's date in MM/dd/yyyy */
