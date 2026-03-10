@@ -442,9 +442,10 @@ async function buildAiInvoice(opp: Opportunity, ai: AiResult): Promise<ExcelJS.W
   if (fs.existsSync(logoPath)) {
     const logoId = wb.addImage({ filename: logoPath, extension: "png" });
     // Place logo overlaid on the left portion of the title row, sized to fill the row height
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ws.addImage(logoId, {
-      tl: { col: 0.1, row: 0.05 },
-      br: { col: 1.8, row: 0.95 },
+      tl: { col: 0.1, row: 0.05 } as any,
+      br: { col: 1.8, row: 0.95 } as any,
       editAs: "oneCell",
     });
   }
@@ -761,7 +762,7 @@ export async function POST(
 
   let buffer: Buffer;
   try {
-    buffer = (await wb.xlsx.writeBuffer()) as Buffer;
+    buffer = Buffer.from(await wb.xlsx.writeBuffer());
   } catch (err) {
     console.error("[invoice-ai] Excel build error:", err);
     return NextResponse.json({ error: "Excel generation failed", detail: String(err) }, { status: 500 });
@@ -769,7 +770,7 @@ export async function POST(
 
   const safeName = `AI_Invoice_${(opp.solicitationNumber ?? opp.noticeId).replace(/[^a-zA-Z0-9_-]/g, "_")}.xlsx`;
 
-  return new NextResponse(buffer, {
+  return new NextResponse(buffer as unknown as BodyInit, {
     status: 200,
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
