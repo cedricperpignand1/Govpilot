@@ -11,7 +11,7 @@ import { Opportunity } from "@/lib/types";
 const SAM_KEY = process.env.SAM_API_KEY ?? "";
 const OPENAI_KEY = process.env.OPENAI_API_KEY ?? "";
 
-// ─── Server-side in-memory caches ───────────────────────────────────────────
+// ─── Server-side in-memory cache ───────────────────────────────────────────
 // Survives across requests within the same Next.js server process.
 // TTL: 4 hours — long enough to avoid redundant SAM fetches in a work session.
 const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
