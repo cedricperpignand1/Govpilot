@@ -199,7 +199,7 @@ function calcOpportunityScore(
     if (k && title.includes(k)) score -= 8;
   }
 
-  return { score: Math.max(0, Math.min(100, score)), signals };
+  return { score: Math.round(Math.max(0, Math.min(100, score))), signals };
 }
 
 // ─── Steps 2–5: Competition Estimation ───────────────────────────────────────
@@ -277,7 +277,7 @@ export function scoreOpportunity(
   const { competitionScore, estimatedBidders, competitionTier } = calcCompetition(opp);
 
   // FinalScore = OpportunityScore − CompetitionScore, clamped 0–100
-  const finalScore = Math.max(0, Math.min(100, opportunityScore - competitionScore));
+  const finalScore = Math.round(Math.max(0, Math.min(100, opportunityScore - competitionScore)));
 
   return {
     score: finalScore,
