@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import OpenAI from "openai";
-import { PDFParse } from "pdf-parse";
+import pdfParse from "pdf-parse";
 import fs from "fs";
 import path from "path";
 // Force Node.js runtime so pdf-parse is never bundled by webpack
@@ -109,9 +109,7 @@ async function fetchSamContent(url: string): Promise<{ text: string; error?: str
       const cached = cacheGet(pdfTextCache, url);
       if (cached) return { text: cached };
       try {
-        const parser = new PDFParse({ data: bytes });
-        const result = await parser.getText({ cellSeparator: "\t" });
-        await parser.destroy();
+        const result = await pdfParse(bytes);
         if (!result.text?.trim()) {
           return { text: "", error: `pdf-parse returned empty text for ${url} (possibly image-based PDF)` };
         }
