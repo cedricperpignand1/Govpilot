@@ -7,48 +7,60 @@ interface Props {
   opp: ScoredOpportunity;
 }
 
-function deadlineLabel(opp: ScoredOpportunity): {
-  text: string;
-  urgent: boolean;
-} {
+function deadlineLabel(opp: ScoredOpportunity): { text: string; urgent: boolean } {
   const raw = opp.responseDeadLine ?? opp.reponseDeadLine;
   if (!raw) return { text: "No deadline", urgent: false };
   const d = new Date(raw);
   if (isNaN(d.getTime())) return { text: raw, urgent: false };
   const hoursLeft = (d.getTime() - Date.now()) / 3_600_000;
-  const formatted = d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const formatted = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   if (hoursLeft < 0) return { text: `EXPIRED ${formatted}`, urgent: true };
   if (hoursLeft < 48) return { text: `URGENT: ${formatted}`, urgent: true };
   return { text: formatted, urgent: false };
 }
 
+// Step 7 — Score interpretation labels
+function scoreLabel(score: number): string {
+  if (score >= 90) return "Excellent";
+  if (score >= 75) return "Strong";
+  if (score >= 60) return "Moderate";
+  if (score >= 40) return "Low";
+  return "Noise";
+}
+
 function scoreColor(score: number): string {
-  if (score >= 15) return "#22c55e";
-  if (score >= 5) return "#f59e0b";
-  if (score < 0) return "#ef4444";
-  return "#94a3b8";
+  if (score >= 75) return "#22c55e";
+  if (score >= 60) return "#f59e0b";
+  if (score >= 40) return "#94a3b8";
+  return "#ef4444";
+}
+
+function tierColor(tier: ScoredOpportunity["competitionTier"]): string {
+  switch (tier) {
+    case "Excellent":  return "#22c55e";
+    case "Good":       return "#86efac";
+    case "Moderate":   return "#f59e0b";
+    case "High":       return "#f97316";
+    case "Very High":  return "#ef4444";
+  }
 }
 
 export default function OpportunityRow({ opp }: Props) {
   const { text: deadlineText, urgent } = deadlineLabel(opp);
-  const agency =
-    opp.fullParentPathName ??
-    opp.organizationName ??
-    "Unknown Agency";
+  const agency = opp.fullParentPathName ?? opp.organizationName ?? "Unknown Agency";
   const samLink = opp.uiLink ?? opp.description;
   const pop = opp.placeOfPerformance;
   const popStr = [pop?.state?.code, pop?.zip].filter(Boolean).join(" ");
 
   return (
     <div className="opp-row">
+      {/* Score column */}
       <div className="opp-score" style={{ color: scoreColor(opp.score) }}>
-        {opp.score > 0 ? `+${opp.score}` : opp.score}
+        <span className="score-number">{opp.score}</span>
+        <span className="score-label">{scoreLabel(opp.score)}</span>
       </div>
 
+      {/* Main content */}
       <div className="opp-main">
         <Link href={`/opportunities/${opp.noticeId}`} className="opp-title">
           {opp.title}
@@ -65,7 +77,23 @@ export default function OpportunityRow({ opp }: Props) {
           {popStr && (
             <span className="meta-tag pop-tag">{popStr}</span>
           )}
+          {/* Competition badge */}
+          <span
+            className="meta-tag competition-tag"
+            style={{ color: tierColor(opp.competitionTier), borderColor: tierColor(opp.competitionTier) }}
+          >
+            ~{opp.estimatedBidders} · {opp.competitionTier}
+          </span>
         </div>
+
+        {/* Key signals row */}
+        {opp.signals.length > 0 && (
+          <div className="opp-signals">
+            {opp.signals.slice(0, 4).map((s, i) => (
+              <span key={i} className="signal-chip">{s}</span>
+            ))}
+          </div>
+        )}
 
         <div className="opp-details">
           <span className="detail-item agency">{agency}</span>
@@ -75,20 +103,16 @@ export default function OpportunityRow({ opp }: Props) {
           <span className="detail-item">
             Posted:{" "}
             {opp.postedDate
-              ? new Date(opp.postedDate).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })
+              ? new Date(opp.postedDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
               : "—"}
           </span>
-          <span
-            className={`detail-item deadline ${urgent ? "deadline-urgent" : ""}`}
-          >
+          <span className={`detail-item deadline ${urgent ? "deadline-urgent" : ""}`}>
             Due: {deadlineText}
           </span>
         </div>
       </div>
 
+      {/* Actions */}
       <div className="opp-actions">
         {samLink && (
           <a

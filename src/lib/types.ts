@@ -49,7 +49,18 @@ export interface Opportunity {
 }
 
 export interface ScoredOpportunity extends Opportunity {
+  /** Final score 0–100 (OpportunityScore − CompetitionScore) */
   score: number;
+  /** Raw opportunity attractiveness 0–100 before competition adjustment */
+  opportunityScore: number;
+  /** Raw competition pressure score (higher = more competition) */
+  competitionScore: number;
+  /** Estimated number of bidders as a range string e.g. "4–7" */
+  estimatedBidders: string;
+  /** Human-readable competition tier */
+  competitionTier: "Excellent" | "Good" | "Moderate" | "High" | "Very High";
+  /** Key signals that drove the score */
+  signals: string[];
 }
 
 export interface SamApiResponse {
