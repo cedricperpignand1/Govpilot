@@ -159,7 +159,14 @@ export default function BidFeed() {
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const scored = scoreAll(opps, {
+      const now = Date.now();
+      const active = opps.filter((o) => {
+        const deadline = o.responseDeadLine ?? o.reponseDeadLine;
+        if (!deadline) return true;
+        return new Date(deadline).getTime() > now;
+      });
+
+      const scored = scoreAll(active, {
         includeKeywords: includeKws,
         excludeKeywords: excludeKws,
       });
