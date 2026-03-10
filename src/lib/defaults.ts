@@ -62,6 +62,12 @@ export const DEFAULT_INCLUDE_KEYWORDS = [
   "safety signs", "cones", "barricades", "reflective vest",
   // Misc supplies
   "furniture", "chairs", "desks", "shelving", "storage",
+  // Heavy equipment & industrial
+  "generator", "compressor", "pump", "motor",
+  "filter", "hose", "valve", "container",
+  "trailer", "fence", "gate",
+  "steel", "aluminum",
+  "equipment", "material", "supplies",
 ].join(", ");
 
 export const DEFAULT_EXCLUDE_KEYWORDS = [
