@@ -99,6 +99,16 @@ export const DEFAULT_EXCLUDE_KEYWORDS = [
   "staffing", "medical staffing",
   // Facility services
   "janitorial services", "grounds maintenance", "HVAC service", "repair service",
+  // Cleaning & painting services
+  "cleaning", "cleaning services", "tank cleaning", "pressure washing",
+  "painting services", "repaint", "repainting", "coating application",
+  "surface preparation",
+  // Pumping & waste services
+  "pumping services", "septic", "vault pumping", "waste removal",
+  // General service catch-alls
+  "services", "service contract", "mowing", "landscaping",
+  "pest control", "extermination", "snow removal", "trash removal",
+  "road marking", "line marking", "striping",
 ].join(", ");
 
 /** Returns today's date in MM/dd/yyyy */
