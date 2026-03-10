@@ -60,6 +60,7 @@ export default function OpportunityDetail({ noticeId }: Props) {
   const [source, setSource] = useState<"api" | "local">("api");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [descHtml, setDescHtml] = useState<string | null>(null);
 
   async function handleAiInvoice() {
     setAiLoading(true);
@@ -135,6 +136,19 @@ export default function OpportunityDetail({ noticeId }: Props) {
     load();
     return () => { cancelled = true; };
   }, [noticeId]);
+
+  // Fetch description HTML once we have the opportunity
+  useEffect(() => {
+    if (!opp?.description) return;
+    let cancelled = false;
+    fetch(`/api/description?url=${encodeURIComponent(opp.description)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!cancelled && j?.description) setDescHtml(j.description);
+      })
+      .catch(() => { /* silently skip if unavailable */ });
+    return () => { cancelled = true; };
+  }, [opp?.description]);
 
   if (loading) return <div className="loading-state">Loading notice…</div>;
   if (error)
@@ -282,6 +296,16 @@ export default function OpportunityDetail({ noticeId }: Props) {
           </div>
         )}
       </div>
+
+      {descHtml && (
+        <div className="detail-section">
+          <h2>Description</h2>
+          <div
+            className="opp-description"
+            dangerouslySetInnerHTML={{ __html: descHtml }}
+          />
+        </div>
+      )}
 
       <div className="detail-section">
         <h2>Links</h2>

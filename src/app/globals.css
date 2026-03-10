@@ -552,6 +552,21 @@ select {
   margin-bottom: 16px;
 }
 
+.opp-description {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.opp-description p  { margin: 0 0 10px; }
+.opp-description ul,
+.opp-description ol { margin: 0 0 10px; padding-left: 20px; }
+.opp-description strong,
+.opp-description b  { color: #e2e8f0; }
+.opp-description a  { color: var(--accent); }
+
 .detail-section h2 {
   font-size: 14px;
   font-weight: 700;
