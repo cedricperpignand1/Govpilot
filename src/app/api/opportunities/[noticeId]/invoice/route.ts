@@ -363,7 +363,7 @@ async function buildInvoice(opp: Opportunity): Promise<Buffer> {
   // Freeze the top 4 rows (title + invoice meta)
   ws.views = [{ state: "frozen", xSplit: 0, ySplit: 4, topLeftCell: "A5" }];
 
-  return (await wb.xlsx.writeBuffer()) as Buffer;
+  return Buffer.from(await wb.xlsx.writeBuffer());
 }
 
 // ─── Route handler ─────────────────────────────────────────────────────────
@@ -389,7 +389,7 @@ export async function GET(
     const buffer = await buildInvoice(opp);
     const safeName = `Invoice_${(opp.solicitationNumber ?? noticeId).replace(/[^a-zA-Z0-9_-]/g, "_")}.xlsx`;
 
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as unknown as BodyInit, {
       status: 200,
       headers: {
         "Content-Type":
