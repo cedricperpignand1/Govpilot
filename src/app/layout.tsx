@@ -23,6 +23,9 @@ export default function RootLayout({
             <Link href="/" className="app-nav-link">
               Bid Feed
             </Link>
+            <Link href="/saas-ops" className="app-nav-link">
+              SaaS Ops
+            </Link>
             <Link href="/miami-contractors" className="app-nav-link">
               Miami Contractors
             </Link>

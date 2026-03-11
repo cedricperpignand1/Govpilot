@@ -111,6 +111,48 @@ export const DEFAULT_EXCLUDE_KEYWORDS = [
   "road marking", "line marking", "striping",
 ].join(", ");
 
+export const SAAS_NAICS = [
+  "541511", // Custom Computer Programming Services
+  "541512", // Computer Systems Design Services
+  "541513", // Computer Facilities Management Services
+  "541519", // Other Computer Related Services
+  "518210", // Data Processing, Hosting, and Related Services
+  "511210", // Software Publishers
+  "519130", // Internet Publishing, Broadcasting and Web Search Portals
+  "541690", // Other Scientific and Technical Consulting (IT advisory)
+];
+
+export const SAAS_INCLUDE_KEYWORDS = [
+  "SaaS", "software", "platform", "cloud", "subscription", "license",
+  "software license", "cloud services", "managed services", "IT services",
+  "enterprise software", "web application", "mobile application",
+  "cybersecurity", "data analytics", "analytics platform", "dashboard",
+  "portal", "system", "solution", "digital platform", "API",
+  "AI", "machine learning", "data processing", "hosting",
+  "software as a service", "cloud computing", "infrastructure",
+].join(", ");
+
+export const SAAS_EXCLUDE_KEYWORDS = [
+  // Physical goods
+  "PPE", "gloves", "bolts", "nuts", "fasteners", "anchors",
+  "drill bits", "saw blades", "grinding discs", "abrasives",
+  "lumber", "plywood", "drywall", "insulation", "roofing",
+  "paint", "primer", "rollers", "brushes",
+  "pipe", "valve", "fittings", "conduit",
+  "furniture", "chairs", "desks", "shelving",
+  "generator", "compressor", "pump",
+  "trailer", "fence", "gate",
+  "steel", "aluminum",
+  // Construction & labor
+  "construction", "renovation", "demolition", "labor",
+  // Facility services
+  "janitorial", "grounds maintenance", "mowing", "landscaping",
+  "pest control", "snow removal", "trash removal",
+  "cleaning", "painting services", "pumping",
+  // Weapons
+  "weapons", "ammunition", "ordnance",
+].join(", ");
+
 /** Returns today's date in MM/dd/yyyy */
 export function formatDateForSam(date: Date): string {
   const mm = String(date.getMonth() + 1).padStart(2, "0");
