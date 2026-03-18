@@ -25,6 +25,7 @@ interface Company {
   hasContactPage: number | null;
   hasAboutPage: number | null;
   crawlPayload: string | null;
+  phone: string | null;
 }
 
 interface Summary {
@@ -575,6 +576,7 @@ export default function MiamiCompanies() {
                       {label} {sortIcon(col)}
                     </th>
                   ))}
+                  <th className="mgc-th">Phone</th>
                   <th className="mgc-th">Website</th>
                   <th className="mgc-th">Emails Found</th>
                 </tr>
@@ -599,6 +601,7 @@ export default function MiamiCompanies() {
                       <td className="mgc-td">{crawlStatusBadge(row.crawlStatus)}</td>
                       <td className="mgc-td">{fmtDate(row.lastSyncedAt)}</td>
                       <td className="mgc-td">{fmtDate(row.lastCrawledAt)}</td>
+                      <td className="mgc-td">{row.phone ?? "—"}</td>
                       <td className="mgc-td">
                         {row.website
                           ? <a href={row.website} target="_blank" rel="noreferrer" className="mgc-link"
@@ -681,6 +684,7 @@ export default function MiamiCompanies() {
                     <tr><th>Pages Crawled</th><td>{selected.pagesCrawled ?? "—"}</td></tr>
                     <tr><th>Has Contact Page</th><td>{selected.hasContactPage ? "Yes" : (selected.lastCrawledAt ? "No" : "—")}</td></tr>
                     <tr><th>Has About Page</th><td>{selected.hasAboutPage ? "Yes" : (selected.lastCrawledAt ? "No" : "—")}</td></tr>
+                    <tr><th>Phone</th><td>{selected.phone ?? "—"}</td></tr>
                     <tr><th>Email Count</th><td>{selected.emailCount ?? "—"}</td></tr>
                     {selected.crawlError && (
                       <tr><th>Error</th><td className="mgc-error-text">{selected.crawlError}</td></tr>

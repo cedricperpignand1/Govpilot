@@ -35,6 +35,9 @@ export default function RootLayout({
             <Link href="/miami-companies" className="app-nav-link">
               Miami Companies
             </Link>
+            <Link href="/company-search" className="app-nav-link">
+              Company Search
+            </Link>
           </nav>
         </header>
         <main className="page-wrapper">{children}</main>

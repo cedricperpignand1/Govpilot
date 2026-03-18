@@ -214,6 +214,40 @@ export function rankEmails(
   });
 }
 
+// ─── Phone extraction ─────────────────────────────────────────────────────────
+
+/**
+ * Extract the best phone number from raw HTML.
+ * Priority: tel: href links first, then text pattern scan.
+ * Returns a single normalized string (the first/best one found), or null.
+ */
+export function extractPhoneFromHtml(html: string): string | null {
+  // Method 1: tel: href — most reliable, explicitly placed by site owner
+  const telRegex = /href=["']tel:([^"']+)["']/gi;
+  let m: RegExpExecArray | null;
+  while ((m = telRegex.exec(html)) !== null) {
+    const raw = m[1].replace(/\s+/g, "").trim();
+    if (raw.length >= 7) return raw;
+  }
+
+  // Method 2: text scan — strip tags first
+  const text = html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ");
+
+  // Matches formats like: (305) 555-1234 | 305-555-1234 | +1 305 555 1234 | +1.305.555.1234
+  const phoneRegex = /(?:\+?1[\s.\-]?)?(?:\((\d{3})\)|(\d{3}))[\s.\-]?(\d{3})[\s.\-]?(\d{4})/g;
+  while ((m = phoneRegex.exec(text)) !== null) {
+    const area = m[1] ?? m[2];
+    const mid  = m[3];
+    const end  = m[4];
+    if (area && mid && end) return `(${area}) ${mid}-${end}`;
+  }
+
+  return null;
+}
+
 /**
  * Deduplicate a flat array of ExtractedEmail by email address (case-insensitive).
  * Earlier entries win (preserves source URL from first occurrence).

@@ -23,7 +23,7 @@ const MIAMI_LAT = "25.7617";
 const MIAMI_LNG = "-80.1918";
 const MIAMI_RADIUS = "50000"; // 50 km
 
-const PAGE_TOKEN_DELAY_MS = 2_500; // Google requires ~2s before page token is valid
+const PAGE_TOKEN_DELAY_MS = 5_000; // Google requires ~2s before page token is valid; 5s is safer
 const REQUEST_DELAY_MS    = 300;   // polite gap between non-paginated calls
 
 // ─── Response types ───────────────────────────────────────────────────────────
@@ -68,6 +68,16 @@ function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));
 }
 
+async function fetchWithTimeout(url: string, timeoutMs = 10_000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { cache: "no-store", signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function checkStatus(status: string, error_message?: string, url?: string): void {
   if (status === "OK" || status === "ZERO_RESULTS") return;
   if (status === "REQUEST_DENIED") {
@@ -87,27 +97,36 @@ function checkStatus(status: string, error_message?: string, url?: string): void
 
 // ─── Text Search ──────────────────────────────────────────────────────────────
 
+export interface LocationBias {
+  lat: string;
+  lng: string;
+  radius: string;
+}
+
 /**
  * Fetch one page of Text Search results.
  * Pass pageToken to get subsequent pages.
+ * Pass bias to apply a location bias (optional — omit for global searches).
  */
 async function fetchTextSearchPage(
   query: string,
-  pageToken?: string
+  pageToken?: string,
+  bias?: LocationBias,
 ): Promise<TextSearchResponse> {
   const url = new URL(`${PLACES_BASE}/textsearch/json`);
 
   if (pageToken) {
     url.searchParams.set("pagetoken", pageToken);
   } else {
-    url.searchParams.set("query",    query);
-    url.searchParams.set("location", `${MIAMI_LAT},${MIAMI_LNG}`);
-    url.searchParams.set("radius",   MIAMI_RADIUS);
-    url.searchParams.set("type",     "establishment");
+    url.searchParams.set("query", query);
+    if (bias) {
+      url.searchParams.set("location", `${bias.lat},${bias.lng}`);
+      url.searchParams.set("radius",   bias.radius);
+    }
   }
   url.searchParams.set("key", API_KEY);
 
-  const res  = await fetch(url.toString(), { cache: "no-store" });
+  const res  = await fetchWithTimeout(url.toString());
   const json = await res.json() as TextSearchResponse;
   checkStatus(json.status, json.error_message);
   return json;
@@ -116,20 +135,43 @@ async function fetchTextSearchPage(
 /**
  * Fetch ALL pages of Text Search results for a query.
  * Returns an array of place stubs (no website yet — that requires Place Details).
+ * Pass bias to apply a location bias (optional).
  */
-export async function textSearchAll(query: string): Promise<PlacesTextSearchResult[]> {
+export async function textSearchAll(query: string, bias?: LocationBias): Promise<PlacesTextSearchResult[]> {
   const all: PlacesTextSearchResult[] = [];
   let pageToken: string | undefined;
 
   do {
-    if (pageToken) await sleep(PAGE_TOKEN_DELAY_MS); // required delay before page token is valid
+    if (pageToken) await sleep(PAGE_TOKEN_DELAY_MS);
 
-    const page = await fetchTextSearchPage(query, pageToken);
-    all.push(...(page.results ?? []));
-    pageToken = page.next_page_token;
+    try {
+      const page = await fetchTextSearchPage(query, pageToken, bias);
+      all.push(...(page.results ?? []));
+      pageToken = page.next_page_token;
+    } catch (err) {
+      if (pageToken) {
+        // Page token INVALID_REQUEST is common — retry up to 3 more times with extra delay
+        let fetched = false;
+        for (let pt = 1; pt <= 3; pt++) {
+          await sleep(3_000 * pt);
+          try {
+            const page = await fetchTextSearchPage(query, pageToken, bias);
+            all.push(...(page.results ?? []));
+            pageToken = page.next_page_token;
+            fetched = true;
+            break;
+          } catch { /* keep retrying */ }
+        }
+        if (!fetched) {
+          console.warn(`[places] Page token failed after retries, returning ${all.length} results so far.`);
+          break;
+        }
+      } else {
+        throw err; // first page failed — let withRetry handle it
+      }
+    }
 
     if (!pageToken) break;
-    // Limit to 3 pages (60 results) per query to control costs
     if (all.length >= 60) break;
   } while (pageToken);
 
@@ -154,7 +196,7 @@ export async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails |
 
   await sleep(REQUEST_DELAY_MS);
 
-  const res  = await fetch(url.toString(), { cache: "no-store" });
+  const res  = await fetchWithTimeout(url.toString());
   const json = await res.json() as PlaceDetailsResponse;
 
   if (json.status === "NOT_FOUND" || json.status === "ZERO_RESULTS") return null;
@@ -165,4 +207,47 @@ export async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails |
 
 export function placesKeyConfigured(): boolean {
   return Boolean(API_KEY) && API_KEY !== "PASTE_YOUR_GOOGLE_PLACES_API_KEY_HERE";
+}
+
+// ─── Geocoding ────────────────────────────────────────────────────────────────
+
+interface GeocodeResponse {
+  status: string;
+  results: Array<{
+    geometry: {
+      location: { lat: number; lng: number };
+    };
+    types: string[];
+  }>;
+}
+
+/**
+ * Convert a location string (e.g. "Miami", "New York", "FL") to lat/lng.
+ * Uses the Geocoding API — same key, ~$0.005/request.
+ * Returns null if the location cannot be resolved.
+ */
+export async function geocodeLocation(location: string): Promise<LocationBias | null> {
+  const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+  url.searchParams.set("address", location);
+  url.searchParams.set("key",     API_KEY);
+
+  try {
+    const res  = await fetchWithTimeout(url.toString());
+    const json = await res.json() as GeocodeResponse;
+
+    if (json.status !== "OK" || !json.results.length) return null;
+
+    const { lat, lng } = json.results[0].geometry.location;
+
+    // Choose radius based on result type — bigger area for states/countries, tighter for cities
+    const types = json.results[0].types ?? [];
+    let radius = "50000"; // 50 km default (city)
+    if (types.some((t) => ["administrative_area_level_1", "country"].includes(t))) {
+      radius = "300000"; // 300 km for states/countries
+    }
+
+    return { lat: String(lat), lng: String(lng), radius };
+  } catch {
+    return null;
+  }
 }

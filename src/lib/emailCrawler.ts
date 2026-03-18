@@ -33,6 +33,7 @@ import {
   extractEmailsFromHtml,
   deduplicateEmails,
   rankEmails,
+  extractPhoneFromHtml,
   ExtractedEmail,
 } from "./emailExtractor";
 
@@ -51,6 +52,7 @@ export interface CompanyCrawlResult {
   domain: string;
   startUrl: string;
   emails: ExtractedEmail[];
+  phone: string | null;
   pageResults: CrawlPageResult[];
   pagesCrawled: number;
   hasContactPage: boolean;
@@ -244,6 +246,7 @@ export async function crawlCompanyWebsite(
     domain,
     startUrl: website,
     emails: [],
+    phone: null,
     pageResults: [],
     pagesCrawled: 0,
     hasContactPage: false,
@@ -291,6 +294,7 @@ export async function crawlCompanyWebsite(
   const visitedUrls = new Set<string>();
   const allEmails: ExtractedEmail[] = [];
   let homepageHtml = ""; // saved for link discovery after first page
+  let foundPhone: string | null = null;
 
   for (const url of queuedUrls) {
     if (result.pagesCrawled >= maxPages) break;
@@ -322,6 +326,8 @@ export async function crawlCompanyWebsite(
       const pageEmails = extractEmailsFromHtml(page.html, url);
       allEmails.push(...pageEmails);
 
+      if (!foundPhone) foundPhone = extractPhoneFromHtml(page.html);
+
       result.pageResults.push({
         url, status: page.status, emailsFound: pageEmails.length,
         error: null, isContactPage: isContact, isAboutPage: isAbout,
@@ -352,6 +358,7 @@ export async function crawlCompanyWebsite(
 
   // Deduplicate and rank emails (company-domain emails first)
   result.emails = rankEmails(deduplicateEmails(allEmails), domain);
+  result.phone = foundPhone;
 
   return result;
 }

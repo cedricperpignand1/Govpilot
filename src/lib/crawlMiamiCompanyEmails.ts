@@ -44,6 +44,8 @@ export const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
   skipRecentlyCrawledDays: CRAWL_SKIP_CRAWLED_WITHIN_DAYS,
 };
 
+const CONCURRENCY = 5;
+
 export interface CrawlRunStats {
   totalCompaniesConsidered: number;
   skippedNoWebsite: number;
@@ -105,6 +107,7 @@ const updateCompanyCrawl = db.prepare(`
     hasContactPage = @hasContactPage,
     hasAboutPage   = @hasAboutPage,
     crawlPayload   = @crawlPayload,
+    phone          = @phone,
     updatedAt      = datetime('now')
   WHERE id = @id
 `);
@@ -140,160 +143,102 @@ export async function crawlMiamiCompanyEmails(
     errors: [],
   };
 
-  const companies = loadEligibleCompanies();
-  stats.totalCompaniesConsidered = companies.length;
+  const allCompanies = loadEligibleCompanies();
+  stats.totalCompaniesConsidered = allCompanies.length;
 
   const skipBefore = opts.skipRecentlyCrawledDays > 0
     ? new Date(Date.now() - opts.skipRecentlyCrawledDays * 86_400_000).toISOString()
     : null;
 
-  function sleep(ms: number) {
-    return new Promise<void>((r) => setTimeout(r, ms));
+  // Filter eligible companies upfront
+  const queue: typeof allCompanies = [];
+  for (const company of allCompanies) {
+    if (!company.website) { stats.skippedNoWebsite++; continue; }
+    if (opts.onlyWithoutEmails && company.emailCount > 0) { stats.skippedNoChange++; continue; }
+    if (skipBefore && company.lastCrawledAt && company.lastCrawledAt > skipBefore) {
+      stats.skippedRecentlyCrawled++; continue;
+    }
+    queue.push(company);
   }
 
-  for (const company of companies) {
-    // Check email limit BEFORE starting this company
-    if (opts.emailLimit !== null && stats.totalEmailsFoundThisRun >= opts.emailLimit) {
-      stats.stoppedByLimit = true;
-      break;
-    }
-
-    // Skip if no website (shouldn't happen given query, but safety check)
-    if (!company.website) {
-      stats.skippedNoWebsite++;
-      continue;
-    }
-
-    // Skip if already has emails and onlyWithoutEmails is set
-    if (opts.onlyWithoutEmails && company.emailCount > 0) {
-      stats.skippedNoChange++;
-      continue;
-    }
-
-    // Skip if recently crawled
-    if (skipBefore && company.lastCrawledAt && company.lastCrawledAt > skipBefore) {
-      stats.skippedRecentlyCrawled++;
-      continue;
-    }
-
+  const processCompany = async (company: CompanyForCrawl) => {
     const domain = company.domain ?? (() => {
       try {
         return new URL(company.website!.startsWith("http") ? company.website! : `https://${company.website}`).hostname.replace(/^www\./, "");
       } catch { return null; }
     })();
-
-    if (!domain) {
-      stats.skippedNoWebsite++;
-      continue;
-    }
-
-    if (stats.totalCompaniesCrawled > 0) {
-      await sleep(CRAWL_INTER_COMPANY_DELAY_MS);
-    }
-
-    console.log(
-      `[crawler] [${stats.totalCompaniesCrawled + 1}] Crawling: ${company.companyName ?? domain} (${domain})`
-    );
+    if (!domain) { stats.skippedNoWebsite++; return; }
 
     let crawlResult;
     try {
       crawlResult = await crawlCompanyWebsite(company.website!, domain, opts.maxPagesPerSite);
     } catch (err) {
-      const msg = `${domain}: ${String(err)}`;
-      console.error(`[crawler] Unexpected error —`, msg);
       stats.totalFailedCompanies++;
-      stats.errors.push(msg);
-
-      // Mark as error in DB
+      stats.errors.push(`${domain}: ${String(err)}`);
       updateCompanyCrawl.run({
-        id: company.id,
-        crawlStatus: "error",
-        crawlError: String(err),
-        pagesCrawled: 0,
-        lastCrawledAt: new Date().toISOString(),
-        hasContactPage: 0,
-        hasAboutPage: 0,
-        crawlPayload: null,
+        id: company.id, crawlStatus: "error", crawlError: String(err),
+        pagesCrawled: 0, lastCrawledAt: new Date().toISOString(),
+        hasContactPage: 0, hasAboutPage: 0, crawlPayload: null, phone: null,
       });
-      continue;
+      return;
     }
 
     stats.totalCompaniesCrawled++;
     stats.totalPagesCrawled += crawlResult.pagesCrawled;
 
-    // Save emails to child table
     let insertedForThisCompany = 0;
     let dupsForThisCompany = 0;
 
     const insertBatch = db.transaction(() => {
       for (const e of crawlResult.emails) {
-        // Check email limit mid-company
         if (opts.emailLimit !== null &&
-            stats.totalEmailsFoundThisRun + insertedForThisCompany >= opts.emailLimit) {
-          break;
-        }
-
+            stats.totalEmailsFoundThisRun + insertedForThisCompany >= opts.emailLimit) break;
         const info = upsertEmail.run({
-          companyId: company.id,
-          email: e.email,
-          sourceUrl: e.sourceUrl,
-          sourceType: classifySourceType(e.sourceUrl),
+          companyId: company.id, email: e.email,
+          sourceUrl: e.sourceUrl, sourceType: classifySourceType(e.sourceUrl),
           emailRole: e.isGeneric ? "generic" : "personal",
         });
-
-        if ((info as { changes: number }).changes > 0) {
-          insertedForThisCompany++;
-        } else {
-          dupsForThisCompany++;
-        }
+        if ((info as { changes: number }).changes > 0) insertedForThisCompany++;
+        else dupsForThisCompany++;
       }
     });
-
     insertBatch();
 
     stats.totalEmailsFoundThisRun += insertedForThisCompany;
     stats.totalDuplicatesSkipped  += dupsForThisCompany;
 
-    const crawlStatus = crawlResult.blocked
-      ? "blocked"
-      : crawlResult.error
-        ? "error"
-        : crawlResult.emails.length > 0
-          ? "done"
-          : "done_no_emails";
+    const crawlStatus = crawlResult.blocked ? "blocked"
+      : crawlResult.error ? "error"
+      : crawlResult.emails.length > 0 ? "done" : "done_no_emails";
 
-    // Persist crawl stats and error info back to parent row
     updateCompanyCrawl.run({
-      id: company.id,
-      crawlStatus,
-      crawlError: crawlResult.error ?? null,
-      pagesCrawled: crawlResult.pagesCrawled,
-      lastCrawledAt: new Date().toISOString(),
+      id: company.id, crawlStatus, crawlError: crawlResult.error ?? null,
+      pagesCrawled: crawlResult.pagesCrawled, lastCrawledAt: new Date().toISOString(),
       hasContactPage: crawlResult.hasContactPage ? 1 : 0,
       hasAboutPage:   crawlResult.hasAboutPage   ? 1 : 0,
-      crawlPayload: JSON.stringify({
-        pageResults: crawlResult.pageResults,
-        emailsFound: crawlResult.emails.length,
-        blocked: crawlResult.blocked,
-      }),
+      crawlPayload: JSON.stringify({ emailsFound: crawlResult.emails.length, blocked: crawlResult.blocked }),
+      phone: crawlResult.phone ?? null,
     });
 
     if (crawlResult.error && !crawlResult.blocked) {
       stats.totalFailedCompanies++;
       stats.errors.push(`${domain}: ${crawlResult.error}`);
     }
+  };
 
-    console.log(
-      `[crawler]   → pages: ${crawlResult.pagesCrawled}, emails: ${crawlResult.emails.length} ` +
-      `(${insertedForThisCompany} new, ${dupsForThisCompany} dup) status: ${crawlStatus}`
-    );
-
-    // Check limit after company
-    if (opts.emailLimit !== null && stats.totalEmailsFoundThisRun >= opts.emailLimit) {
-      stats.stoppedByLimit = true;
-      break;
+  // Concurrent pool
+  let index = 0;
+  const runWorker = async () => {
+    while (index < queue.length) {
+      if (opts.emailLimit !== null && stats.totalEmailsFoundThisRun >= opts.emailLimit) {
+        stats.stoppedByLimit = true; break;
+      }
+      const company = queue[index++];
+      await processCompany(company);
     }
-  }
+  };
+
+  await Promise.all(Array.from({ length: CONCURRENCY }, runWorker));
 
   console.log(
     `[crawler] Crawl complete.\n` +

@@ -13,7 +13,7 @@
 // ─── Per-request settings ─────────────────────────────────────────────────────
 
 /** HTTP request timeout per page in milliseconds. */
-export const CRAWL_REQUEST_TIMEOUT_MS = 12_000;
+export const CRAWL_REQUEST_TIMEOUT_MS = 7_000;
 
 /** User-Agent string sent with every request. Identifies the crawler honestly. */
 export const CRAWL_USER_AGENT =
@@ -32,7 +32,7 @@ export const CRAWL_MAX_REDIRECTS = 5;
 export const CRAWL_MAX_PAGES_PER_COMPANY = 6;
 
 /** Milliseconds to wait between page requests for the SAME company. Politeness. */
-export const CRAWL_INTER_PAGE_DELAY_MS = 800;
+export const CRAWL_INTER_PAGE_DELAY_MS = 300;
 
 /** Milliseconds to wait between companies. Prevents hammering shared hosting. */
 export const CRAWL_INTER_COMPANY_DELAY_MS = 300;

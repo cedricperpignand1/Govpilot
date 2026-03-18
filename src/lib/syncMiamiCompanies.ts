@@ -23,8 +23,10 @@
  */
 
 import { db } from "./db";
-import { textSearchAll, fetchPlaceDetails, placesKeyConfigured, PlacesTextSearchResult } from "./googlePlacesClient";
+import { textSearchAll, fetchPlaceDetails, placesKeyConfigured, PlacesTextSearchResult, LocationBias } from "./googlePlacesClient";
 import { mapPlaceDetails } from "./googlePlacesMapper";
+
+const MIAMI_BIAS: LocationBias = { lat: "25.7617", lng: "-80.1918", radius: "50000" };
 import {
   TRADES,
   LOCALITIES,
@@ -192,7 +194,7 @@ export async function syncMiamiCompanies(): Promise<CompaniesSyncStats> {
     console.log(`[places] [${i + 1}/${queries.length}] Text search: "${query}"`);
 
     try {
-      const results = await withRetry(`text search "${query}"`, () => textSearchAll(query));
+      const results = await withRetry(`text search "${query}"`, () => textSearchAll(query, MIAMI_BIAS));
       stats.rawPlacesFound += results.length;
       stats.queriesExecuted++;
 

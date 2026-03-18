@@ -127,6 +127,7 @@ const _crawlCols: [string, string][] = [
   ["hasContactPage", "INTEGER DEFAULT 0"],
   ["hasAboutPage",   "INTEGER DEFAULT 0"],
   ["crawlPayload",   "TEXT"],
+  ["phone",          "TEXT"],
 ];
 for (const [col, def] of _crawlCols) {
   try { db.exec(`ALTER TABLE miami_companies ADD COLUMN ${col} ${def}`); } catch { /* already exists */ }
@@ -463,6 +464,7 @@ export interface CompanyRow {
   hasContactPage: number;
   hasAboutPage: number;
   crawlPayload: string | null;
+  phone: string | null;
 }
 
 export interface ListCompaniesParams {
@@ -569,6 +571,200 @@ export function getMiamiCompaniesSummary(): {
   ).get() as { cnt: number }).cnt;
 
   return { ...row, totalEmailsFound };
+}
+
+// ─── scraped_companies table (generic keyword+location search) ───────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS scraped_companies (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    companyName    TEXT,
+    website        TEXT,
+    domain         TEXT,
+    address        TEXT,
+    city           TEXT,
+    state          TEXT,
+    googlePlaceId  TEXT UNIQUE,
+    keyword        TEXT,
+    searchLocation TEXT,
+    source         TEXT DEFAULT 'google_places',
+    rawPayload     TEXT,
+    createdAt      TEXT DEFAULT (datetime('now')),
+    updatedAt      TEXT DEFAULT (datetime('now')),
+    lastSyncedAt   TEXT,
+    emailCount     INTEGER DEFAULT 0,
+    crawlStatus    TEXT,
+    crawlError     TEXT,
+    pagesCrawled   INTEGER DEFAULT 0,
+    lastCrawledAt  TEXT,
+    hasContactPage INTEGER DEFAULT 0,
+    hasAboutPage   INTEGER DEFAULT 0,
+    crawlPayload   TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_sc_domain    ON scraped_companies(domain);
+  CREATE INDEX IF NOT EXISTS idx_sc_placeid   ON scraped_companies(googlePlaceId);
+  CREATE INDEX IF NOT EXISTS idx_sc_keyword   ON scraped_companies(keyword);
+  CREATE INDEX IF NOT EXISTS idx_sc_location  ON scraped_companies(searchLocation);
+  CREATE INDEX IF NOT EXISTS idx_sc_crawl     ON scraped_companies(crawlStatus);
+
+
+  CREATE TABLE IF NOT EXISTS scraped_company_emails (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    companyId   INTEGER NOT NULL,
+    email       TEXT NOT NULL,
+    sourceUrl   TEXT,
+    sourceType  TEXT,
+    emailRole   TEXT,
+    createdAt   TEXT DEFAULT (datetime('now')),
+    updatedAt   TEXT DEFAULT (datetime('now')),
+    UNIQUE(companyId, email)
+  );
+  CREATE INDEX IF NOT EXISTS idx_sce_company ON scraped_company_emails(companyId);
+  CREATE INDEX IF NOT EXISTS idx_sce_email   ON scraped_company_emails(email);
+`);
+
+// Safe: add phone column to scraped_companies (idempotent)
+try { db.exec("ALTER TABLE scraped_companies ADD COLUMN phone TEXT"); } catch { /* already exists */ }
+
+// ─── ScrapedCompanyRow type + helpers ────────────────────────────────────────
+
+export interface ScrapedCompanyRow {
+  id: number;
+  companyName: string | null;
+  website: string | null;
+  domain: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  googlePlaceId: string | null;
+  keyword: string | null;
+  searchLocation: string | null;
+  source: string | null;
+  rawPayload: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  lastSyncedAt: string | null;
+  emailCount: number;
+  emailsList: string | null;
+  crawlStatus: string | null;
+  crawlError: string | null;
+  pagesCrawled: number;
+  lastCrawledAt: string | null;
+  hasContactPage: number;
+  hasAboutPage: number;
+  crawlPayload: string | null;
+  phone: string | null;
+}
+
+export interface ListScrapedCompaniesParams {
+  name?: string;
+  domain?: string;
+  city?: string;
+  state?: string;
+  keyword?: string;
+  searchLocation?: string;
+  onlyWithWebsite?: boolean;
+  onlyWithEmails?: boolean;
+  minEmailCount?: number;
+  crawlStatus?: string;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+}
+
+export function listScrapedCompanies(p: ListScrapedCompaniesParams): { rows: ScrapedCompanyRow[]; total: number } {
+  const {
+    name, domain, city, state, keyword, searchLocation,
+    onlyWithWebsite = false, onlyWithEmails = false, minEmailCount,
+    crawlStatus,
+    sortBy = "companyName", sortDir = "asc", page = 1, pageSize = 50,
+  } = p;
+
+  const conditions: string[] = [];
+  const bindings: (string | number)[] = [];
+
+  if (name)           { conditions.push("LOWER(sc.companyName) LIKE LOWER(?)");    bindings.push(`%${name}%`); }
+  if (domain)         { conditions.push("LOWER(sc.domain) LIKE LOWER(?)");         bindings.push(`%${domain}%`); }
+  if (city)           { conditions.push("LOWER(sc.city) LIKE LOWER(?)");           bindings.push(`%${city}%`); }
+  if (state)          { conditions.push("LOWER(sc.state) = LOWER(?)");             bindings.push(state); }
+  if (keyword)        { conditions.push("LOWER(sc.keyword) LIKE LOWER(?)");        bindings.push(`%${keyword}%`); }
+  if (searchLocation) { conditions.push("LOWER(sc.searchLocation) LIKE LOWER(?)"); bindings.push(`%${searchLocation}%`); }
+  if (crawlStatus)    { conditions.push("sc.crawlStatus = ?");                     bindings.push(crawlStatus); }
+  if (onlyWithWebsite)  { conditions.push("sc.website IS NOT NULL AND sc.website != ''"); }
+  if (onlyWithEmails)   { conditions.push("(SELECT COUNT(*) FROM scraped_company_emails WHERE companyId = sc.id) > 0"); }
+  if (minEmailCount != null && minEmailCount > 0) {
+    conditions.push("(SELECT COUNT(*) FROM scraped_company_emails WHERE companyId = sc.id) >= ?");
+    bindings.push(minEmailCount);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const ALLOWED_SORT = new Set([
+    "companyName", "domain", "city", "state", "keyword", "searchLocation",
+    "lastSyncedAt", "emailCount", "lastCrawledAt", "crawlStatus",
+  ]);
+  const safeSort = ALLOWED_SORT.has(sortBy) ? `sc.${sortBy}` : "sc.companyName";
+  const safeDir  = sortDir === "desc" ? "DESC" : "ASC";
+  const offset   = (page - 1) * pageSize;
+
+  const total = (
+    db.prepare(`SELECT COUNT(*) AS cnt FROM scraped_companies sc ${where}`).get(...bindings) as { cnt: number }
+  ).cnt;
+
+  const rows = db.prepare(`
+    SELECT
+      sc.*,
+      COALESCE(e.emailCount, 0) AS emailCount,
+      e.emailsList              AS emailsList
+    FROM scraped_companies sc
+    LEFT JOIN (
+      SELECT companyId, COUNT(*) AS emailCount, GROUP_CONCAT(email, '|||') AS emailsList
+      FROM scraped_company_emails GROUP BY companyId
+    ) e ON e.companyId = sc.id
+    ${where}
+    ORDER BY ${safeSort} ${safeDir}
+    LIMIT ? OFFSET ?
+  `).all(...bindings, pageSize, offset) as ScrapedCompanyRow[];
+
+  return { rows, total };
+}
+
+export function getScrapedCompaniesSummary(keyword?: string, searchLocation?: string): {
+  total: number;
+  withWebsite: number;
+  withDomain: number;
+  withEmails: number;
+  totalEmailsFound: number;
+  lastSyncedAt: string | null;
+  lastCrawledAt: string | null;
+} {
+  const conditions: string[] = [];
+  const bindings: string[] = [];
+  if (keyword)        { conditions.push("LOWER(keyword) LIKE LOWER(?)");        bindings.push(`%${keyword}%`); }
+  if (searchLocation) { conditions.push("LOWER(searchLocation) LIKE LOWER(?)"); bindings.push(`%${searchLocation}%`); }
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const row = db.prepare(`
+    SELECT
+      COUNT(*)                                                                AS total,
+      SUM(CASE WHEN website IS NOT NULL AND website != '' THEN 1 ELSE 0 END) AS withWebsite,
+      SUM(CASE WHEN domain  IS NOT NULL AND domain  != '' THEN 1 ELSE 0 END) AS withDomain,
+      SUM(CASE WHEN emailCount > 0 THEN 1 ELSE 0 END)                        AS withEmails,
+      MAX(lastSyncedAt)                                                       AS lastSyncedAt,
+      MAX(lastCrawledAt)                                                      AS lastCrawledAt
+    FROM scraped_companies ${where}
+  `).get(...bindings) as {
+    total: number; withWebsite: number; withDomain: number;
+    withEmails: number; lastSyncedAt: string | null; lastCrawledAt: string | null;
+  };
+
+  const emailRow = db.prepare(`
+    SELECT COUNT(*) AS cnt FROM scraped_company_emails
+    WHERE companyId IN (SELECT id FROM scraped_companies ${where})
+  `).get(...bindings) as { cnt: number };
+
+  return { ...row, totalEmailsFound: emailRow.cnt };
 }
 
 // ─── Unified domain source for Hunter sync ───────────────────────────────────
