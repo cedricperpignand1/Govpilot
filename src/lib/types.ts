@@ -73,6 +73,9 @@ export interface SamApiResponse {
 export interface FilterState {
   postedFrom: string; // MM/dd/yyyy
   postedTo: string;   // MM/dd/yyyy
+  keyword: string;    // sent as 'title' to SAM — server-side keyword filter
+  solnum: string;     // solicitation number lookup
+  agency: string;     // sent as 'organizationName' to SAM
   state: string;
   naics: string;      // comma-separated NAICS codes
   ptype: string;      // comma-separated ptype codes

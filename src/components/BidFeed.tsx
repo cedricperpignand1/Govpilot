@@ -9,7 +9,6 @@ import { scoreAll } from "@/lib/scoring";
 const LS_RESULTS_KEY = "govpilot_last_results";
 const LS_META_KEY = "govpilot_last_meta";
 const LS_TTL_MS = 4 * 60 * 60 * 1000; // keep localStorage results for 4 hours
-const SEARCH_COOLDOWN_MS = 30 * 60 * 1000; // minimum 30 min between live API calls
 
 interface StoredMeta {
   savedAt: number;
@@ -80,20 +79,6 @@ export default function BidFeed() {
   }, []);
 
   const handleSearch = useCallback(async () => {
-    // Enforce cooldown: if a live search was done recently, serve from cache instead
-    const stored = loadFromLocalStorage();
-    if (stored && Date.now() - stored.meta.savedAt < SEARCH_COOLDOWN_MS) {
-      const minsLeft = Math.ceil((SEARCH_COOLDOWN_MS - (Date.now() - stored.meta.savedAt)) / 60000);
-      setResults(stored.results);
-      setTotal(stored.total);
-      setSearched(true);
-      setFromCache({ savedAt: stored.meta.savedAt });
-      setError({
-        msg: `Using cached results to protect your SAM.gov quota. Next live search available in ~${minsLeft} min.`,
-      });
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setSearched(true);
@@ -105,6 +90,9 @@ export default function BidFeed() {
       const sp = new URLSearchParams();
       sp.set("postedFrom", filters.postedFrom);
       sp.set("postedTo", filters.postedTo);
+      if (filters.keyword.trim()) sp.set("title", filters.keyword.trim());
+      if (filters.solnum.trim()) sp.set("solnum", filters.solnum.trim());
+      if (filters.agency.trim()) sp.set("organizationName", filters.agency.trim());
       if (filters.state) sp.set("state", filters.state);
       sp.set("limit", String(filters.limit));
       sp.set("offset", String(filters.offset));
