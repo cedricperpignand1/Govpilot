@@ -52,7 +52,7 @@ export function buildDefaultFilters(): FilterState {
     sortBy: "score",
     minScore: 30,
     hideVeryHighCompetition: true,
-    limit: 100,
+    limit: 550,
     offset: 0,
   };
 }
