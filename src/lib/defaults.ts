@@ -1,25 +1,37 @@
 export const PREFERRED_NAICS = [
-  // ── Durable goods wholesale (product resale sweet spot) ──
+  // ── Durable goods wholesale ──
   "423990", // Other Miscellaneous Durable Goods Merchant Wholesalers
   "423710", // Hardware Merchant Wholesalers
   "423840", // Industrial and Commercial Supplies Merchant Wholesalers
   "423690", // Other Electronic Parts and Equipment Merchant Wholesalers
   "423610", // Electrical Apparatus and Equipment Merchant Wholesalers
+  "423620", // Electrical Appliances, Television & Radio Merchant Wholesalers
   "423390", // Other Construction Material Merchant Wholesalers
   "423330", // Roofing, Siding, and Insulation Material Merchant Wholesalers
   "423320", // Brick, Stone, and Related Construction Material Merchant Wholesalers
+  "423310", // Lumber, Plywood, Millwork, and Wood Panel Merchant Wholesalers
   "423720", // Plumbing and Heating Equipment Merchant Wholesalers
   "423730", // HVAC Equipment and Supplies Merchant Wholesalers
   "423830", // Industrial Machinery and Equipment Merchant Wholesalers
+  "423810", // Construction and Mining Machinery and Equipment Merchant Wholesalers
   "423850", // Service Establishment Equipment Merchant Wholesalers
   "423430", // Computer and Peripheral Equipment Merchant Wholesalers
   "423420", // Office Equipment Merchant Wholesalers
+  "423440", // Other Commercial Equipment Merchant Wholesalers
+  "423450", // Medical, Dental, and Hospital Equipment and Supplies (first aid, eyewash)
   "423490", // Other Professional Equipment Merchant Wholesalers
   "423510", // Metal Service Centers and Metal Merchant Wholesalers
+  "423210", // Furniture Merchant Wholesalers
+  "423120", // Motor Vehicle Supplies and New Parts (fleet, lubricants, batteries)
   // ── Nondurable goods wholesale ──
   "424120", // Stationery and Office Supplies Merchant Wholesalers
   "424130", // Industrial and Personal Service Paper Merchant Wholesalers
+  "424320", // Men's and Boys' Clothing (uniforms, workwear)
+  "424340", // Footwear Merchant Wholesalers (safety boots)
+  "424610", // Plastics Materials (trash bags, tarps, sheeting)
   "424690", // Other Chemical and Allied Products (cleaning supplies)
+  "424950", // Paint, Varnish, and Supplies Merchant Wholesalers
+  "424990", // Other Miscellaneous Nondurable Goods Merchant Wholesalers
 ];
 
 export const DEFAULT_INCLUDE_KEYWORDS = [
