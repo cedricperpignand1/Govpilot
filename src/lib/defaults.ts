@@ -26,48 +26,82 @@ export const DEFAULT_INCLUDE_KEYWORDS = [
   // PPE & safety
   "safety gloves", "nitrile gloves", "work gloves", "PPE",
   "safety glasses", "hard hats", "respirator", "face shield",
+  "safety vest", "high visibility", "hearing protection", "earplugs", "earmuffs",
+  "safety harness", "fall protection", "knee pads", "safety boots", "steel toe",
+  "first aid", "first aid kit", "eyewash", "AED", "emergency kit",
   // Fasteners & hardware
   "bolts", "nuts", "washers", "fasteners", "anchors", "wedge anchors",
   "screws", "self-tapping screws", "drywall screws", "roofing screws",
   "concrete screws", "hex bolts", "carriage bolts", "lag screws",
+  "rivets", "zip ties", "cable ties", "straps", "clips", "pins",
+  "nails", "staples", "hooks", "hinges", "brackets",
   // Cutting & abrasive tools
   "drill bits", "saw blades", "hole saw", "grinding discs", "cut-off wheels",
-  "sandpaper", "abrasives",
+  "sandpaper", "abrasives", "cutting wheels", "diamond blades",
   // Electrical & lighting
   "extension cord", "power strip", "surge protector",
   "batteries", "AA batteries", "AAA batteries", "9V batteries", "lithium batteries",
   "electrical supplies", "wire", "cable", "connectors", "conduit", "fittings",
-  "LED", "lighting", "lamps", "fluorescent",
+  "LED", "lighting", "lamps", "fluorescent", "ballast", "circuit breaker",
+  "outlet", "switch", "electrical panel", "breaker", "wiring",
   // Janitorial & consumables
   "shop towels", "rags", "disinfectant", "cleaner", "trash bags",
   "paper towels", "toilet paper", "hand soap", "sanitizer", "mop",
   "janitorial supplies", "cleaning supplies",
+  "vacuum bags", "broom", "dustpan", "squeegee", "floor cleaner",
+  "trash liner", "garbage bags", "gloves", "disposable gloves",
   // Shipping & packaging
   "boxes", "packing tape", "stretch wrap", "pallets", "bubble wrap", "foam",
+  "shrink wrap", "labels", "tags", "shipping supplies", "packaging supplies",
+  "cartons", "crates", "dunnage",
   // Tools & equipment
   "hand tools", "sockets", "wrenches", "pliers", "ladders", "step ladder",
   "tool kit", "power tools", "utility knife",
+  "tape measure", "level", "hammer", "screwdriver", "pry bar",
+  "clamps", "vise", "workbench", "tool belt", "tool box",
+  // Material handling
+  "hand truck", "dolly", "cart", "pallet jack", "forklift",
+  "strapping", "banding", "carts", "bins", "totes",
   // Plumbing & HVAC
   "plumbing supplies", "valves", "PVC", "pipe", "fittings", "HVAC",
   "filters", "air filters", "water filters",
+  "coupling", "elbow", "tee", "flange", "gasket", "O-ring", "seal",
+  "ductwork", "vent", "grille", "register", "thermostat", "damper",
   // Building materials
   "lumber", "plywood", "drywall", "insulation", "roofing",
   "sealant", "caulk", "silicone", "adhesive",
+  "concrete", "mortar", "grout", "cement", "rebar", "masonry",
+  "tarp", "tarps", "sheeting", "plastic sheeting",
+  "floor mat", "anti-fatigue mat", "matting", "flooring",
+  // Welding supplies
+  "welding", "welding supplies", "electrodes", "welding wire", "welding rod",
+  "welding helmet", "welding gloves",
   // Paint & coatings
   "paint", "primer", "rollers", "brushes", "drop cloth",
+  "spray paint", "epoxy", "coating", "stain", "varnish",
   // Office & IT supplies
   "toner", "ink cartridge", "office supplies", "paper", "notebooks",
   "keyboards", "monitors", "cables", "USB",
+  "printer", "copier", "binder", "folders", "pens", "markers",
+  "whiteboard", "projector", "headset",
   // Safety & signage
   "safety signs", "cones", "barricades", "reflective vest",
+  "signage", "decals", "placards", "delineators", "barriers",
+  // Rope, chain & rigging
+  "rope", "chain", "hook", "shackle", "carabiner", "rigging",
+  "tie down", "ratchet strap", "bungee",
+  // Uniforms & apparel
+  "uniforms", "workwear", "coveralls", "apron", "gloves",
   // Misc supplies
   "furniture", "chairs", "desks", "shelving", "storage",
+  "lockers", "cabinets", "file cabinet", "rack", "pallet rack",
   // Heavy equipment & industrial
   "generator", "compressor", "pump", "motor",
   "filter", "hose", "valve", "container",
   "trailer", "fence", "gate",
-  "steel", "aluminum",
-  "equipment", "material", "supplies",
+  "steel", "aluminum", "copper", "brass",
+  "lubricant", "oil", "grease", "coolant",
+  "equipment", "material", "supplies", "parts", "components",
 ].join(", ");
 
 export const DEFAULT_EXCLUDE_KEYWORDS = [
