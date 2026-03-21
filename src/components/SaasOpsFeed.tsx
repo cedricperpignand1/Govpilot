@@ -36,6 +36,8 @@ function buildSaasFilters(): FilterState {
     includeKeywords: SAAS_INCLUDE_KEYWORDS,
     excludeKeywords: SAAS_EXCLUDE_KEYWORDS,
     sortBy: "score",
+    minScore: 30,
+    hideVeryHighCompetition: true,
     limit: 100,
     offset: 0,
   };
@@ -90,6 +92,7 @@ export default function SaasOpsFeed() {
   const [error, setError] = useState<{ msg: string; detail?: string; debugUrl?: string } | null>(null);
   const [searched, setSearched] = useState(false);
   const [fromCache, setFromCache] = useState<{ savedAt: number } | null>(null);
+  const [filteredOut, setFilteredOut] = useState(0);
 
   useEffect(() => {
     const stored = loadFromLocalStorage();
@@ -178,7 +181,14 @@ export default function SaasOpsFeed() {
         excludeKeywords: excludeKws,
       });
 
-      const sorted = sortOpportunities(scored, filters.sortBy);
+      const filtered = scored.filter((o) => {
+        if (o.score < filters.minScore) return false;
+        if (filters.hideVeryHighCompetition && o.competitionTier === "Very High") return false;
+        return true;
+      });
+      setFilteredOut(scored.length - filtered.length);
+
+      const sorted = sortOpportunities(filtered, filters.sortBy);
       setResults(sorted);
       saveToLocalStorage(sorted, newTotal, filters);
     } catch (err) {
@@ -229,7 +239,7 @@ export default function SaasOpsFeed() {
         {!error && searched && !loading && !fromCache && (
           <div className="results-header">
             {sorted.length === 0
-              ? "No results found."
+              ? "No quality results found."
               : `Showing ${sorted.length} of ${total ?? sorted.length} results`}
             {sorted.length > 0 && (
               <span className="results-sort-note">
@@ -239,6 +249,11 @@ export default function SaasOpsFeed() {
                   : filters.sortBy === "deadline"
                   ? "soonest deadline"
                   : "newest posted"}
+              </span>
+            )}
+            {filteredOut > 0 && (
+              <span className="results-sort-note" style={{ color: "#888" }}>
+                {" "}· {filteredOut} low-quality filtered out
               </span>
             )}
           </div>

@@ -82,6 +82,8 @@ export interface FilterState {
   includeKeywords: string;
   excludeKeywords: string;
   sortBy: "score" | "deadline" | "posted";
+  minScore: number;
+  hideVeryHighCompetition: boolean;
   limit: number;
   offset: number;
 }

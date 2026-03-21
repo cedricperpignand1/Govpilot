@@ -50,6 +50,8 @@ export function buildDefaultFilters(): FilterState {
     includeKeywords: DEFAULT_INCLUDE_KEYWORDS,
     excludeKeywords: DEFAULT_EXCLUDE_KEYWORDS,
     sortBy: "score",
+    minScore: 30,
+    hideVeryHighCompetition: true,
     limit: 100,
     offset: 0,
   };
@@ -202,8 +204,8 @@ export default function FilterPanel({ filters, onChange, onSearch, loading }: Pr
         </label>
       </div>
 
-      {/* ── Sort ── */}
-      <div className="filter-row">
+      {/* ── Sort + Quality threshold ── */}
+      <div className="filter-row" style={{ alignItems: "flex-end", flexWrap: "wrap", gap: 16 }}>
         <label>
           Sort by
           <select
@@ -214,6 +216,25 @@ export default function FilterPanel({ filters, onChange, onSearch, loading }: Pr
             <option value="deadline">Soonest deadline</option>
             <option value="posted">Newest posted</option>
           </select>
+        </label>
+        <label>
+          Min score (0–100)
+          <input
+            type="number"
+            value={filters.minScore}
+            min={0}
+            max={100}
+            onChange={(e) => set("minScore", Number(e.target.value))}
+            style={{ width: 70 }}
+          />
+        </label>
+        <label className="ptype-check" style={{ marginBottom: 4 }}>
+          <input
+            type="checkbox"
+            checked={filters.hideVeryHighCompetition}
+            onChange={(e) => set("hideVeryHighCompetition", e.target.checked)}
+          />
+          Hide &ldquo;Very High&rdquo; competition (30+ bidders)
         </label>
       </div>
 
