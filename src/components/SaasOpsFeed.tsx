@@ -16,7 +16,6 @@ import {
 const LS_RESULTS_KEY = "govpilot_saas_results";
 const LS_META_KEY = "govpilot_saas_meta";
 const LS_TTL_MS = 4 * 60 * 60 * 1000;
-const SEARCH_COOLDOWN_MS = 30 * 60 * 1000;
 
 interface StoredMeta {
   savedAt: number;
@@ -28,6 +27,9 @@ function buildSaasFilters(): FilterState {
   return {
     postedFrom: daysAgo(30),
     postedTo: todayForSam(),
+    keyword: "",
+    solnum: "",
+    agency: "",
     state: "",
     naics: SAAS_NAICS.join(", "),
     ptype: "o,k",
@@ -100,19 +102,6 @@ export default function SaasOpsFeed() {
   }, []);
 
   const handleSearch = useCallback(async () => {
-    const stored = loadFromLocalStorage();
-    if (stored && Date.now() - stored.meta.savedAt < SEARCH_COOLDOWN_MS) {
-      const minsLeft = Math.ceil((SEARCH_COOLDOWN_MS - (Date.now() - stored.meta.savedAt)) / 60000);
-      setResults(stored.results);
-      setTotal(stored.total);
-      setSearched(true);
-      setFromCache({ savedAt: stored.meta.savedAt });
-      setError({
-        msg: `Using cached results to protect your SAM.gov quota. Next live search available in ~${minsLeft} min.`,
-      });
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setSearched(true);
@@ -122,6 +111,9 @@ export default function SaasOpsFeed() {
       const sp = new URLSearchParams();
       sp.set("postedFrom", filters.postedFrom);
       sp.set("postedTo", filters.postedTo);
+      if (filters.keyword.trim()) sp.set("title", filters.keyword.trim());
+      if (filters.solnum.trim()) sp.set("solnum", filters.solnum.trim());
+      if (filters.agency.trim()) sp.set("organizationName", filters.agency.trim());
       if (filters.state) sp.set("state", filters.state);
       sp.set("limit", String(filters.limit));
       sp.set("offset", String(filters.offset));
