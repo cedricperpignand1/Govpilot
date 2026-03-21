@@ -5,6 +5,7 @@ import FilterPanel from "./FilterPanel";
 import OpportunityRow from "./OpportunityRow";
 import { FilterState, SamApiResponse, ScoredOpportunity } from "@/lib/types";
 import { scoreAll } from "@/lib/scoring";
+import { useSavedOpportunities } from "@/lib/useSavedOpportunities";
 import {
   daysAgo,
   todayForSam,
@@ -93,6 +94,8 @@ export default function SaasOpsFeed() {
   const [searched, setSearched] = useState(false);
   const [fromCache, setFromCache] = useState<{ savedAt: number } | null>(null);
   const [filteredOut, setFilteredOut] = useState(0);
+  const [showSaved, setShowSaved] = useState(false);
+  const { saved, toggle, isSaved } = useSavedOpportunities();
 
   useEffect(() => {
     const stored = loadFromLocalStorage();
@@ -199,6 +202,7 @@ export default function SaasOpsFeed() {
   }, [filters]);
 
   const sorted = sortOpportunities(results, filters.sortBy);
+  const displayRows = showSaved ? saved : sorted;
 
   return (
     <div className="bid-feed">
@@ -210,7 +214,28 @@ export default function SaasOpsFeed() {
       />
 
       <div className="results-area">
-        {error && (
+        {/* Saved toggle button */}
+        <div className="saved-toggle-bar">
+          <button
+            className={`saved-toggle-btn ${showSaved ? "saved-toggle-btn-active" : ""}`}
+            onClick={() => setShowSaved((v) => !v)}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill={showSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" style={{ marginRight: 6 }}>
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            </svg>
+            Saved{saved.length > 0 ? ` (${saved.length})` : ""}
+          </button>
+        </div>
+
+        {showSaved && (
+          <div className="results-header">
+            {saved.length === 0
+              ? "No saved opportunities. Click the bookmark icon on any result to save it."
+              : `${saved.length} saved opportunit${saved.length === 1 ? "y" : "ies"} — expired ones are removed automatically`}
+          </div>
+        )}
+
+        {!showSaved && error && (
           <div className={`error-box ${error.msg.includes("429") ? "error-box-warn" : ""}`}>
             <strong>{error.msg.includes("429") ? "Rate limit:" : "Error:"}</strong>{" "}
             {error.msg}
@@ -228,7 +253,7 @@ export default function SaasOpsFeed() {
           </div>
         )}
 
-        {fromCache && !loading && (
+        {!showSaved && fromCache && !loading && (
           <div className="cache-notice">
             Showing saved results from{" "}
             {new Date(fromCache.savedAt).toLocaleString()} — no API call made.
@@ -236,7 +261,7 @@ export default function SaasOpsFeed() {
           </div>
         )}
 
-        {!error && searched && !loading && !fromCache && (
+        {!showSaved && !error && searched && !loading && !fromCache && (
           <div className="results-header">
             {sorted.length === 0
               ? "No quality results found."
@@ -259,15 +284,20 @@ export default function SaasOpsFeed() {
           </div>
         )}
 
-        {loading && (
+        {!showSaved && loading && (
           <div className="loading-state">Fetching from SAM.gov…</div>
         )}
 
-        {!loading && sorted.map((opp) => (
-          <OpportunityRow key={opp.noticeId} opp={opp} />
+        {!loading && displayRows.map((opp) => (
+          <OpportunityRow
+            key={opp.noticeId}
+            opp={opp}
+            isSaved={isSaved(opp.noticeId)}
+            onToggleSave={toggle}
+          />
         ))}
 
-        {!loading && !searched && (
+        {!showSaved && !loading && !searched && (
           <div className="empty-state">
             Configure your filters above and click <strong>Search SAM.gov</strong> to load SaaS platform opportunities.
           </div>

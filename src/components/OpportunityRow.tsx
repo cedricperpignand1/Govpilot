@@ -5,6 +5,8 @@ import { ScoredOpportunity } from "@/lib/types";
 
 interface Props {
   opp: ScoredOpportunity;
+  isSaved?: boolean;
+  onToggleSave?: (opp: ScoredOpportunity) => void;
 }
 
 function deadlineLabel(opp: ScoredOpportunity): { text: string; urgent: boolean } {
@@ -45,7 +47,7 @@ function tierColor(tier: ScoredOpportunity["competitionTier"]): string {
   }
 }
 
-export default function OpportunityRow({ opp }: Props) {
+export default function OpportunityRow({ opp, isSaved = false, onToggleSave }: Props) {
   const { text: deadlineText, urgent } = deadlineLabel(opp);
   const agency = opp.fullParentPathName ?? opp.organizationName ?? "Unknown Agency";
   const samLink = opp.uiLink ?? opp.description;
@@ -128,6 +130,17 @@ export default function OpportunityRow({ opp }: Props) {
         <Link href={`/opportunities/${opp.noticeId}`} className="detail-link">
           Details
         </Link>
+        {onToggleSave && (
+          <button
+            className={`save-btn ${isSaved ? "save-btn-active" : ""}`}
+            onClick={(e) => { e.stopPropagation(); onToggleSave(opp); }}
+            title={isSaved ? "Remove from saved" : "Save opportunity"}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );

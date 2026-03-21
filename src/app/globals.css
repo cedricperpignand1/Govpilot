@@ -492,6 +492,57 @@ select {
   white-space: nowrap;
 }
 
+/* Save / bookmark button on each opportunity card */
+.save-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s, transform 0.1s;
+}
+.save-btn:hover {
+  color: #f59e0b;
+  transform: scale(1.15);
+}
+.save-btn-active {
+  color: #f59e0b;
+}
+
+/* Saved toggle bar above results */
+.saved-toggle-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.saved-toggle-btn {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid #334155;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.saved-toggle-btn:hover {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+.saved-toggle-btn-active {
+  background: #78350f;
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
 /* ============================================================
    Detail Page
    ============================================================ */
