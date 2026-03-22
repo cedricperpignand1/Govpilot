@@ -36,8 +36,8 @@ const COMPANY = {
   contact: "Cedric Perpignand",
   phone: "3052002591",
   email: "cedricperpignand@gmail.com",
-  uei: "[PLACEHOLDER - TBD]",
-  cage: "[PLACEHOLDER - TBD]",
+  uei: "PFH8KBJQU8M5",
+  cage: "1A3C4",
 };
 
 interface LineItem {
