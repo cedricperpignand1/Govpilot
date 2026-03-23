@@ -37,7 +37,7 @@ function buildSaasFilters(): FilterState {
     includeKeywords: SAAS_INCLUDE_KEYWORDS,
     excludeKeywords: SAAS_EXCLUDE_KEYWORDS,
     sortBy: "score",
-    minScore: 30,
+    minScore: 24,
     hideVeryHighCompetition: true,
     limit: 550,
     offset: 0,

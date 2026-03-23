@@ -50,7 +50,7 @@ export function buildDefaultFilters(): FilterState {
     includeKeywords: DEFAULT_INCLUDE_KEYWORDS,
     excludeKeywords: DEFAULT_EXCLUDE_KEYWORDS,
     sortBy: "score",
-    minScore: 30,
+    minScore: 24,
     hideVeryHighCompetition: true,
     limit: 550,
     offset: 0,
