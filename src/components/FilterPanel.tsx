@@ -77,6 +77,10 @@ export default function FilterPanel({ filters, onChange, onSearch, loading }: Pr
     <div className="filter-panel">
       <h2 className="filter-title">Filters</h2>
 
+      <button className="search-btn" onClick={onSearch} disabled={loading}>
+        {loading ? "Searching…" : "Search SAM.gov"}
+      </button>
+
       {/* ── Quick search row ── */}
       <div className="filter-row" style={{ alignItems: "flex-end" }}>
         <label style={{ flex: 2 }}>
