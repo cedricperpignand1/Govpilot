@@ -146,7 +146,22 @@ export default function FilterPanel({ filters, onChange, onSearch, loading }: Pr
                 const states = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
                 set("state", states[Math.floor(Math.random() * states.length)]);
               }}
-              style={{ cursor: "pointer", fontSize: 14 }}
+              style={{
+                cursor: "pointer",
+                fontSize: 14,
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.2)",
+                borderRadius: 4,
+                color: "inherit",
+                padding: "0 6px",
+                lineHeight: 1,
+                display: "flex",
+                alignItems: "center",
+                opacity: 0.7,
+                transition: "opacity 0.15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.7")}
             >
               🔀
             </button>
