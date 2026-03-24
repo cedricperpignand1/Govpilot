@@ -68,7 +68,11 @@ export default function OpportunityRow({ opp, isSaved = false, onToggleSave }: P
   }
 
   function confirmSave() {
-    onToggleSave?.(opp, nameInput.trim() || undefined);
+    const raw = nameInput.trim();
+    const normalized = raw
+      ? raw.replace(/\b\w/g, (c) => c.toUpperCase())
+      : undefined;
+    onToggleSave?.(opp, normalized);
     setShowPrompt(false);
     setNameInput("");
   }

@@ -67,8 +67,13 @@ export default function BidFeed() {
   const [searched, setSearched] = useState(false);
   const [fromCache, setFromCache] = useState<{ savedAt: number } | null>(null);
   const [filteredOut, setFilteredOut] = useState(0);
-  const [showSaved, setShowSaved] = useState(false);
+  const [savedTab, setSavedTab] = useState<string | null>(null); // null = results, "" = main saved, name = person tab
   const { saved, toggle, isSaved } = useSavedOpportunities();
+
+  // Unique names that have saved something
+  const savedNames = Array.from(
+    new Set(saved.map((o) => o._savedBy).filter((n): n is string => !!n))
+  ).sort();
 
   // On mount, restore last results from localStorage so the page is useful
   // immediately without burning an API call
@@ -183,7 +188,12 @@ export default function BidFeed() {
 
   const sorted = sortOpportunities(results, filters.sortBy);
 
-  const displayRows = showSaved ? saved : sorted;
+  const showSaved = savedTab !== null;
+  const savedDisplay =
+    savedTab === "" ? saved :
+    savedTab !== null ? saved.filter((o) => o._savedBy === savedTab) :
+    [];
+  const displayRows = showSaved ? savedDisplay : sorted;
 
   return (
     <div className="bid-feed">
@@ -195,25 +205,46 @@ export default function BidFeed() {
       />
 
       <div className="results-area">
-        {/* Saved toggle button */}
+        {/* Saved tabs */}
         <div className="saved-toggle-bar">
           <button
-            className={`saved-toggle-btn ${showSaved ? "saved-toggle-btn-active" : ""}`}
-            onClick={() => setShowSaved((v) => !v)}
+            className={`saved-toggle-btn ${savedTab === null ? "saved-toggle-btn-active" : ""}`}
+            onClick={() => setSavedTab(null)}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill={showSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" style={{ marginRight: 6 }}>
+            Results
+          </button>
+          <button
+            className={`saved-toggle-btn ${savedTab === "" ? "saved-toggle-btn-active" : ""}`}
+            onClick={() => setSavedTab("")}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill={savedTab === "" ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" style={{ marginRight: 6 }}>
               <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
             </svg>
             Saved{saved.length > 0 ? ` (${saved.length})` : ""}
           </button>
+          {savedNames.map((name) => {
+            const count = saved.filter((o) => o._savedBy === name).length;
+            return (
+              <button
+                key={name}
+                className={`saved-toggle-btn ${savedTab === name ? "saved-toggle-btn-active" : ""}`}
+                onClick={() => setSavedTab(name)}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill={savedTab === name ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" style={{ marginRight: 6 }}>
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                </svg>
+                Saved - {name}{count > 0 ? ` (${count})` : ""}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Saved view */}
+        {/* Saved view header */}
         {showSaved && (
           <div className="results-header">
-            {saved.length === 0
-              ? "No saved opportunities. Click the bookmark icon on any result to save it."
-              : `${saved.length} saved opportunit${saved.length === 1 ? "y" : "ies"} — expired ones are removed automatically`}
+            {savedDisplay.length === 0
+              ? "No saved opportunities here yet."
+              : `${savedDisplay.length} saved opportunit${savedDisplay.length === 1 ? "y" : "ies"} — expired ones are removed automatically`}
           </div>
         )}
 
