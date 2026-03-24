@@ -1,46 +1,62 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { db } from "@/lib/db";
+import { Redis } from "@upstash/redis";
 import { NextRequest, NextResponse } from "next/server";
 
-// GET /api/saved-opportunities → return all saved opportunities
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
+
+const HASH_KEY = "saved_opportunities";
+
+// GET /api/saved-opportunities
 export async function GET() {
-  const rows = db
-    .prepare("SELECT payload FROM saved_opportunities ORDER BY savedAt DESC")
-    .all() as { payload: string }[];
+  try {
+    const all = await redis.hgetall<Record<string, string>>(HASH_KEY);
+    if (!all) return NextResponse.json([]);
 
-  const opps = rows.map((r) => {
-    try { return JSON.parse(r.payload); } catch { return null; }
-  }).filter(Boolean);
+    const opps = Object.values(all).map((v) => {
+      try { return typeof v === "string" ? JSON.parse(v) : v; } catch { return null; }
+    }).filter(Boolean);
 
-  return NextResponse.json(opps);
+    return NextResponse.json(opps);
+  } catch (err) {
+    console.error("[saved opps] GET error:", err);
+    return NextResponse.json([], { status: 500 });
+  }
 }
 
-// POST /api/saved-opportunities  body: { opportunity }  → upsert (save)
+// POST /api/saved-opportunities  body: { opportunity }
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const opp = body?.opportunity;
-  if (!opp?.noticeId) {
-    return NextResponse.json({ error: "Missing noticeId" }, { status: 400 });
+  try {
+    const body = await req.json();
+    const opp = body?.opportunity;
+    if (!opp?.noticeId) {
+      return NextResponse.json({ error: "Missing noticeId" }, { status: 400 });
+    }
+
+    await redis.hset(HASH_KEY, { [opp.noticeId]: JSON.stringify(opp) });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[saved opps] POST error:", err);
+    return NextResponse.json({ error: "Failed to save" }, { status: 500 });
   }
-
-  db.prepare(
-    `INSERT INTO saved_opportunities (noticeId, payload)
-     VALUES (?, ?)
-     ON CONFLICT(noticeId) DO UPDATE SET payload = excluded.payload, savedAt = datetime('now')`
-  ).run(opp.noticeId, JSON.stringify(opp));
-
-  return NextResponse.json({ ok: true });
 }
 
-// DELETE /api/saved-opportunities?noticeId=xxx → remove
+// DELETE /api/saved-opportunities?noticeId=xxx
 export async function DELETE(req: NextRequest) {
-  const noticeId = req.nextUrl.searchParams.get("noticeId");
-  if (!noticeId) {
-    return NextResponse.json({ error: "Missing noticeId" }, { status: 400 });
-  }
+  try {
+    const noticeId = req.nextUrl.searchParams.get("noticeId");
+    if (!noticeId) {
+      return NextResponse.json({ error: "Missing noticeId" }, { status: 400 });
+    }
 
-  db.prepare("DELETE FROM saved_opportunities WHERE noticeId = ?").run(noticeId);
-  return NextResponse.json({ ok: true });
+    await redis.hdel(HASH_KEY, noticeId);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[saved opps] DELETE error:", err);
+    return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
+  }
 }

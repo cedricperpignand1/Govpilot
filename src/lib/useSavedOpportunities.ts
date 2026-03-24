@@ -13,13 +13,15 @@ function isExpired(opp: ScoredOpportunity): boolean {
 export function useSavedOpportunities() {
   const [saved, setSaved] = useState<ScoredOpportunity[]>([]);
 
-  // Load from server on mount
   useEffect(() => {
     fetch("/api/saved-opportunities")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`GET failed: ${r.status}`);
+        return r.json();
+      })
       .then((data: ScoredOpportunity[]) => {
+        console.log("[saved opps] loaded from server:", data.length);
         const active = data.filter((o) => !isExpired(o));
-        // Purge expired ones from the server too
         const expired = data.filter((o) => isExpired(o));
         expired.forEach((o) =>
           fetch(`/api/saved-opportunities?noticeId=${encodeURIComponent(o.noticeId)}`, {
@@ -28,7 +30,7 @@ export function useSavedOpportunities() {
         );
         setSaved(active);
       })
-      .catch(() => {/* ignore network errors */});
+      .catch((err) => console.error("[saved opps] load error:", err));
   }, []);
 
   const toggle = useCallback((opp: ScoredOpportunity) => {
@@ -37,6 +39,9 @@ export function useSavedOpportunities() {
       if (exists) {
         fetch(`/api/saved-opportunities?noticeId=${encodeURIComponent(opp.noticeId)}`, {
           method: "DELETE",
+        }).then((r) => {
+          if (!r.ok) console.error("[saved opps] DELETE failed:", r.status);
+          else console.log("[saved opps] deleted:", opp.noticeId);
         });
         return prev.filter((o) => o.noticeId !== opp.noticeId);
       } else {
@@ -44,6 +49,9 @@ export function useSavedOpportunities() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ opportunity: opp }),
+        }).then((r) => {
+          if (!r.ok) r.text().then((t) => console.error("[saved opps] POST failed:", r.status, t));
+          else console.log("[saved opps] saved:", opp.noticeId);
         });
         return [...prev, opp];
       }
