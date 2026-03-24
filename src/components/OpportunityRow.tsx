@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
 import { ScoredOpportunity } from "@/lib/types";
 
 interface Props {
   opp: ScoredOpportunity;
   isSaved?: boolean;
-  onToggleSave?: (opp: ScoredOpportunity) => void;
+  onToggleSave?: (opp: ScoredOpportunity, savedBy?: string) => void;
 }
 
 function deadlineLabel(opp: ScoredOpportunity): { text: string; urgent: boolean } {
@@ -49,6 +50,28 @@ function tierColor(tier: ScoredOpportunity["competitionTier"]): string {
 
 export default function OpportunityRow({ opp, isSaved = false, onToggleSave }: Props) {
   const { text: deadlineText, urgent } = deadlineLabel(opp);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showPrompt) inputRef.current?.focus();
+  }, [showPrompt]);
+
+  function handleSaveClick(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (isSaved) {
+      onToggleSave?.(opp);
+    } else {
+      setShowPrompt(true);
+    }
+  }
+
+  function confirmSave() {
+    onToggleSave?.(opp, nameInput.trim() || undefined);
+    setShowPrompt(false);
+    setNameInput("");
+  }
   const agency = opp.fullParentPathName ?? opp.organizationName ?? "Unknown Agency";
   const samLink = opp.uiLink ?? opp.description;
   const pop = opp.placeOfPerformance;
@@ -131,15 +154,67 @@ export default function OpportunityRow({ opp, isSaved = false, onToggleSave }: P
           Details
         </Link>
         {onToggleSave && (
-          <button
-            className={`save-btn ${isSaved ? "save-btn-active" : ""}`}
-            onClick={(e) => { e.stopPropagation(); onToggleSave(opp); }}
-            title={isSaved ? "Remove from saved" : "Save opportunity"}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
-              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-            </svg>
-          </button>
+          <div style={{ position: "relative" }}>
+            {opp._savedBy && isSaved && (
+              <div style={{ fontSize: 10, color: "#94a3b8", textAlign: "center", marginBottom: 2, whiteSpace: "nowrap" }}>
+                {opp._savedBy}
+              </div>
+            )}
+            <button
+              className={`save-btn ${isSaved ? "save-btn-active" : ""}`}
+              onClick={handleSaveClick}
+              title={isSaved ? "Remove from saved" : "Save opportunity"}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+              </svg>
+            </button>
+            {showPrompt && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  position: "absolute", right: 0, top: "100%", marginTop: 6, zIndex: 50,
+                  background: "#1e293b", border: "1px solid rgba(255,255,255,0.15)",
+                  borderRadius: 8, padding: "10px 12px", width: 200,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+                }}
+              >
+                <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>Who is saving this?</div>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") confirmSave(); if (e.key === "Escape") { setShowPrompt(false); setNameInput(""); } }}
+                  placeholder="Your name (optional)"
+                  style={{
+                    width: "100%", background: "#0f172a", border: "1px solid rgba(255,255,255,0.2)",
+                    borderRadius: 4, color: "#f1f5f9", padding: "4px 8px", fontSize: 13, marginBottom: 8, boxSizing: "border-box",
+                  }}
+                />
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={confirmSave}
+                    style={{
+                      flex: 1, background: "#f59e0b", border: "none", borderRadius: 4,
+                      color: "#0f172a", fontWeight: 600, fontSize: 12, padding: "4px 0", cursor: "pointer",
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => { setShowPrompt(false); setNameInput(""); }}
+                    style={{
+                      flex: 1, background: "transparent", border: "1px solid rgba(255,255,255,0.2)",
+                      borderRadius: 4, color: "#94a3b8", fontSize: 12, padding: "4px 0", cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -61,6 +61,8 @@ export interface ScoredOpportunity extends Opportunity {
   competitionTier: "Excellent" | "Good" | "Moderate" | "High" | "Very High";
   /** Key signals that drove the score */
   signals: string[];
+  /** Name of person who saved this opportunity */
+  _savedBy?: string;
 }
 
 export interface SamApiResponse {

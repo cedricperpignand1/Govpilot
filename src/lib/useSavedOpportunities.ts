@@ -33,7 +33,7 @@ export function useSavedOpportunities() {
       .catch((err) => console.error("[saved opps] load error:", err));
   }, []);
 
-  const toggle = useCallback((opp: ScoredOpportunity) => {
+  const toggle = useCallback((opp: ScoredOpportunity, savedBy?: string) => {
     setSaved((prev) => {
       const exists = prev.some((o) => o.noticeId === opp.noticeId);
       if (exists) {
@@ -45,15 +45,16 @@ export function useSavedOpportunities() {
         });
         return prev.filter((o) => o.noticeId !== opp.noticeId);
       } else {
+        const oppToSave = savedBy ? { ...opp, _savedBy: savedBy } : opp;
         fetch("/api/saved-opportunities", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ opportunity: opp }),
+          body: JSON.stringify({ opportunity: oppToSave }),
         }).then((r) => {
           if (!r.ok) r.text().then((t) => console.error("[saved opps] POST failed:", r.status, t));
           else console.log("[saved opps] saved:", opp.noticeId);
         });
-        return [...prev, opp];
+        return [...prev, oppToSave];
       }
     });
   }, []);
