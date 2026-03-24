@@ -3,19 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { ScoredOpportunity } from "./types";
 
-const LS_KEY = "govpilot_saved_opps";
-
-function load(): ScoredOpportunity[] {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    return raw ? (JSON.parse(raw) as ScoredOpportunity[]) : [];
-  } catch { return []; }
-}
-
-function save(opps: ScoredOpportunity[]) {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(opps)); } catch { /* quota */ }
-}
-
 function isExpired(opp: ScoredOpportunity): boolean {
   const raw = opp.responseDeadLine ?? opp.reponseDeadLine;
   if (!raw) return false;
@@ -26,23 +13,40 @@ function isExpired(opp: ScoredOpportunity): boolean {
 export function useSavedOpportunities() {
   const [saved, setSaved] = useState<ScoredOpportunity[]>([]);
 
-  // Load from localStorage on mount
+  // Load from server on mount
   useEffect(() => {
-    const all = load();
-    // Auto-purge expired ones on load
-    const active = all.filter((o) => !isExpired(o));
-    if (active.length !== all.length) save(active);
-    setSaved(active);
+    fetch("/api/saved-opportunities")
+      .then((r) => r.json())
+      .then((data: ScoredOpportunity[]) => {
+        const active = data.filter((o) => !isExpired(o));
+        // Purge expired ones from the server too
+        const expired = data.filter((o) => isExpired(o));
+        expired.forEach((o) =>
+          fetch(`/api/saved-opportunities?noticeId=${encodeURIComponent(o.noticeId)}`, {
+            method: "DELETE",
+          })
+        );
+        setSaved(active);
+      })
+      .catch(() => {/* ignore network errors */});
   }, []);
 
   const toggle = useCallback((opp: ScoredOpportunity) => {
     setSaved((prev) => {
       const exists = prev.some((o) => o.noticeId === opp.noticeId);
-      const next = exists
-        ? prev.filter((o) => o.noticeId !== opp.noticeId)
-        : [...prev, opp];
-      save(next);
-      return next;
+      if (exists) {
+        fetch(`/api/saved-opportunities?noticeId=${encodeURIComponent(opp.noticeId)}`, {
+          method: "DELETE",
+        });
+        return prev.filter((o) => o.noticeId !== opp.noticeId);
+      } else {
+        fetch("/api/saved-opportunities", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ opportunity: opp }),
+        });
+        return [...prev, opp];
+      }
     });
   }, []);
 

@@ -767,6 +767,15 @@ export function getScrapedCompaniesSummary(keyword?: string, searchLocation?: st
   return { ...row, totalEmailsFound: emailRow.cnt };
 }
 
+// ─── saved_opportunities table ───────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS saved_opportunities (
+    noticeId   TEXT PRIMARY KEY,
+    payload    TEXT NOT NULL,
+    savedAt    TEXT DEFAULT (datetime('now'))
+  );
+`);
+
 // ─── Unified domain source for Hunter sync ───────────────────────────────────
 /** Returns all Miami companies (from both sources) that have or can derive a domain. */
 export interface DomainSource {
