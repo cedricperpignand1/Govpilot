@@ -131,13 +131,26 @@ export default function FilterPanel({ filters, onChange, onSearch, loading }: Pr
         </label>
         <label>
           State
-          <input
-            type="text"
-            value={filters.state}
-            onChange={(e) => set("state", e.target.value)}
-            placeholder="FL (blank = all)"
-            style={{ width: 90 }}
-          />
+          <div style={{ display: "flex", gap: 4 }}>
+            <input
+              type="text"
+              value={filters.state}
+              onChange={(e) => set("state", e.target.value)}
+              placeholder="FL (blank = all)"
+              style={{ width: 90 }}
+            />
+            <button
+              type="button"
+              title="Random state"
+              onClick={() => {
+                const states = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"];
+                set("state", states[Math.floor(Math.random() * states.length)]);
+              }}
+              style={{ cursor: "pointer", fontSize: 14 }}
+            >
+              🔀
+            </button>
+          </div>
         </label>
         <label>
           Limit
