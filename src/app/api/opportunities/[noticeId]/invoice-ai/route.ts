@@ -120,10 +120,13 @@ async function fetchSamContent(url: string): Promise<{ text: string; error?: str
       }
     }
 
-    // Detect DOCX by content-type or URL extension — docx files are ZIP archives (PK magic bytes)
+    // Detect DOCX by content-type, URL extension, OR ZIP magic bytes (PK = 0x50 0x4B).
+    // SAM.gov often serves docx as application/octet-stream with no extension in the URL.
+    const isPkZip = bytes.length > 4 && bytes[0] === 0x50 && bytes[1] === 0x4B;
     const isDocx = contentType.includes("wordprocessingml") ||
       contentType.includes("officedocument") ||
-      url.toLowerCase().includes(".docx");
+      url.toLowerCase().includes(".docx") ||
+      isPkZip;
 
     if (isDocx) {
       const cached = cacheGet(pdfTextCache, url);
