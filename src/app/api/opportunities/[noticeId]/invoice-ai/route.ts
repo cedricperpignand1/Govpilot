@@ -402,6 +402,131 @@ function addSuppliersSheet(wb: ExcelJS.Workbook, suppliers: Supplier[], items: L
   ws.getCell(`A${r}`).alignment = { horizontal: "center" };
 }
 
+// ─── Email Template sheet ────────────────────────────────────────────────────
+function addEmailTemplateSheet(wb: ExcelJS.Workbook, opp: Opportunity, ai: AiResult): void {
+  const ws = wb.addWorksheet("Email Template");
+
+  ws.columns = [{ width: 100 }];
+
+  let r = 1;
+
+  // Header banner
+  ws.getCell(`A${r}`).value = "VENDOR QUOTE REQUEST — EMAIL TEMPLATE";
+  ws.getCell(`A${r}`).font = { bold: true, color: { argb: "FFFFFFFF" }, size: 14 };
+  ws.getCell(`A${r}`).fill = solidFill(NAVY);
+  ws.getCell(`A${r}`).alignment = { horizontal: "center", vertical: "middle" };
+  ws.getRow(r).height = 32;
+  r++;
+
+  ws.getCell(`A${r}`).value = "Copy the text below and paste it into your email client.";
+  ws.getCell(`A${r}`).font = { italic: true, color: { argb: "FF555555" }, size: 10 };
+  ws.getCell(`A${r}`).fill = solidFill({ argb: "FFFFF2CC" });
+  ws.getCell(`A${r}`).alignment = { horizontal: "center" };
+  ws.getRow(r).height = 18;
+  r++;
+
+  ws.getRow(r).height = 8; r++;
+
+  // Build delivery address string
+  const pop = opp.placeOfPerformance;
+  const deliveryParts = [
+    pop?.city?.name,
+    pop?.state?.name ?? pop?.state?.code,
+    pop?.zip,
+    pop?.country?.name ?? pop?.country?.code,
+  ].filter(Boolean);
+  const deliveryAddress = deliveryParts.length > 0 ? deliveryParts.join(", ") : "See solicitation for delivery location";
+
+  const agency = opp.fullParentPathName ?? opp.organizationName ?? "the issuing agency";
+  const solNum = opp.solicitationNumber ?? opp.noticeId;
+  const deadline = opp.responseDeadLine ?? opp.reponseDeadLine;
+  const deadlineStr = deadline
+    ? new Date(deadline).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+    : "See solicitation";
+
+  // Build items block
+  const itemLines = ai.items.map((item, i) => {
+    const partInfo = item.partNumber ? `Part/CLIN #: ${item.partNumber}` : `Item ${i + 1}`;
+    return `  • ${partInfo}\n    Description: ${item.description}\n    Quantity: ${item.quantity} ${item.unit}`;
+  }).join("\n\n");
+
+  // Subject line
+  const subjectLine = `Subject: Request for Quote – ${solNum} – ${opp.title}`;
+
+  // Full email body
+  const emailBody = [
+    subjectLine,
+    "",
+    "Dear Vendor,",
+    "",
+    `My name is ${COMPANY.contact} and I am reaching out on behalf of ${COMPANY.name}. We are preparing a response to a U.S. Government solicitation and are requesting a competitive quote for the items listed below.`,
+    "",
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    "SOLICITATION DETAILS",
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    `Solicitation Number : ${solNum}`,
+    `Title               : ${opp.title}`,
+    `Issuing Agency      : ${agency}`,
+    `Response Deadline   : ${deadlineStr}`,
+    `Delivery Location   : ${deliveryAddress}`,
+    ai.deliveryTerms ? `Delivery Terms      : ${ai.deliveryTerms}` : "",
+    "",
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    "ITEMS REQUESTED",
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    "",
+    itemLines || "  (See attached solicitation for full item list)",
+    "",
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    "PLEASE INCLUDE IN YOUR QUOTE",
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    "  • Unit price per item",
+    "  • Lead time / estimated delivery date",
+    "  • Country of origin (if applicable)",
+    "  • GSA schedule number or contract pricing (if available)",
+    "  • Any minimum order requirements or volume discounts",
+    "",
+    "Please reply at your earliest convenience. Our deadline for submitting to the government is " + deadlineStr + ".",
+    "",
+    "Thank you for your time and we look forward to working with you.",
+    "",
+    "Best regards,",
+    "",
+    COMPANY.contact,
+    COMPANY.name,
+    `Phone : ${COMPANY.phone}`,
+    `Email : ${COMPANY.email}`,
+    `UEI   : ${COMPANY.uei}   |   CAGE: ${COMPANY.cage}`,
+  ].filter((line) => line !== undefined).join("\n");
+
+  // Write each line as its own row for easy reading / copying
+  const lines = emailBody.split("\n");
+  for (const line of lines) {
+    const cell = ws.getCell(`A${r}`);
+    cell.value = line;
+    cell.font = { name: "Courier New", size: 10 };
+    cell.alignment = { wrapText: false, vertical: "middle" };
+
+    // Style dividers and headers
+    if (line.startsWith("━")) {
+      cell.font = { name: "Courier New", size: 10, color: { argb: "FF1F3864" } };
+    } else if (
+      line === "SOLICITATION DETAILS" ||
+      line === "ITEMS REQUESTED" ||
+      line === "PLEASE INCLUDE IN YOUR QUOTE"
+    ) {
+      cell.font = { name: "Courier New", size: 10, bold: true, color: { argb: "FF1F3864" } };
+      cell.fill = solidFill(LIGHT_BLUE);
+    } else if (line.startsWith("Subject:")) {
+      cell.font = { name: "Courier New", size: 11, bold: true };
+      cell.fill = solidFill(LIGHT_GRAY);
+    }
+
+    ws.getRow(r).height = 15;
+    r++;
+  }
+}
+
 // ─── Excel builder ──────────────────────────────────────────────────────────
 async function buildAiInvoice(opp: Opportunity, ai: AiResult): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
@@ -757,6 +882,7 @@ export async function POST(
   ]);
 
   addSuppliersSheet(wb, supplierResult.suppliers, ai.items);
+  addEmailTemplateSheet(wb, opp, ai);
 
   let buffer: Buffer;
   try {
