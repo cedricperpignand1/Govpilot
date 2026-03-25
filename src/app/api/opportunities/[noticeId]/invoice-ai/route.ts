@@ -766,7 +766,9 @@ export async function POST(
     return NextResponse.json({ error: "Excel generation failed", detail: String(err) }, { status: 500 });
   }
 
-  const safeName = `AI_Invoice_${(opp.solicitationNumber ?? opp.noticeId).replace(/[^a-zA-Z0-9_-]/g, "_")}.xlsx`;
+  const titlePart = (opp.title ?? "Invoice").slice(0, 60).replace(/[^a-zA-Z0-9 _-]/g, "").trim();
+  const solPart = (opp.solicitationNumber ?? opp.noticeId).replace(/[^a-zA-Z0-9_-]/g, "_");
+  const safeName = `${titlePart} - ${solPart}.xlsx`;
 
   return new NextResponse(buffer as unknown as BodyInit, {
     status: 200,

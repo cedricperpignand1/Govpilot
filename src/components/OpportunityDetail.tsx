@@ -61,6 +61,7 @@ export default function OpportunityDetail({ noticeId }: Props) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [descHtml, setDescHtml] = useState<string | null>(null);
+  const [extraLinks, setExtraLinks] = useState<string[]>([]);
 
   async function handleAiInvoice() {
     setAiLoading(true);
@@ -150,6 +151,21 @@ export default function OpportunityDetail({ noticeId }: Props) {
     return () => { cancelled = true; };
   }, [opp?.description]);
 
+  // Always fetch fresh resource links from SAM — the cached opp may have empty resourceLinks
+  useEffect(() => {
+    if (!noticeId) return;
+    let cancelled = false;
+    fetch(`/api/opportunities/${encodeURIComponent(noticeId)}/resources`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!cancelled && Array.isArray(j?.resourceLinks)) {
+          setExtraLinks(j.resourceLinks);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [noticeId]);
+
   if (loading) return <div className="loading-state">Loading notice…</div>;
   if (error)
     return (
@@ -170,9 +186,11 @@ export default function OpportunityDetail({ noticeId }: Props) {
     ? `/api/description?url=${encodeURIComponent(opp.description)}`
     : null;
 
-  // Build attachment list from resourceLinks already in the opportunity data —
-  // no extra API call needed.
-  const attachments: ResourceLink[] = (opp.resourceLinks ?? []).map((url) => {
+  // Merge resourceLinks from cached opp + fresh fetch (deduplicated)
+  const allResourceUrls = Array.from(
+    new Set([...(opp.resourceLinks ?? []), ...extraLinks])
+  );
+  const attachments: ResourceLink[] = allResourceUrls.map((url) => {
     try {
       const u = new URL(url);
       const raw = u.searchParams.get("fileName") ??
@@ -183,6 +201,11 @@ export default function OpportunityDetail({ noticeId }: Props) {
       return { url, name: "Attachment" };
     }
   });
+
+  // Additional named links from the opportunity's links array
+  const namedLinks: ResourceLink[] = (opp.links ?? [])
+    .filter((l) => l.href && l.rel !== "self")
+    .map((l) => ({ url: l.href!, name: l.rel ?? "Link" }));
 
   return (
     <div className="detail-page">
@@ -308,7 +331,7 @@ export default function OpportunityDetail({ noticeId }: Props) {
       )}
 
       <div className="detail-section">
-        <h2>Links</h2>
+        <h2>Attachments &amp; Links</h2>
         <ul className="links-list">
           <li>
             <a href={samPageLink} target="_blank" rel="noopener noreferrer">
@@ -333,6 +356,13 @@ export default function OpportunityDetail({ noticeId }: Props) {
                   </a>
                 </li>
               )}
+          {namedLinks.map((l, i) => (
+            <li key={`nl-${i}`}>
+              <a href={l.url} target="_blank" rel="noopener noreferrer">
+                {l.name}
+              </a>
+            </li>
+          ))}
           {opp.additionalInfoLink && (
             <li>
               <a href={opp.additionalInfoLink} target="_blank" rel="noopener noreferrer">
@@ -341,6 +371,13 @@ export default function OpportunityDetail({ noticeId }: Props) {
             </li>
           )}
         </ul>
+        {attachments.length === 0 && extraLinks.length === 0 && (
+          <p style={{ fontSize: 13, color: "#94a3b8", marginTop: 8 }}>
+            No attachments found. Check the{" "}
+            <a href={samPageLink} target="_blank" rel="noopener noreferrer">SAM.gov notice page</a>{" "}
+            directly for files.
+          </p>
+        )}
       </div>
 
       <div className="detail-section how-to-submit">
