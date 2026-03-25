@@ -435,91 +435,38 @@ function addEmailTemplateSheet(wb: ExcelJS.Workbook, opp: Opportunity, ai: AiRes
     pop?.zip,
     pop?.country?.name ?? pop?.country?.code,
   ].filter(Boolean);
-  const deliveryAddress = deliveryParts.length > 0 ? deliveryParts.join(", ") : "See solicitation for delivery location";
-
-  const agency = opp.fullParentPathName ?? opp.organizationName ?? "the issuing agency";
-  const solNum = opp.solicitationNumber ?? opp.noticeId;
-  const deadline = opp.responseDeadLine ?? opp.reponseDeadLine;
-  const deadlineStr = deadline
-    ? new Date(deadline).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
-    : "See solicitation";
+  const deliveryAddress = deliveryParts.length > 0 ? deliveryParts.join(", ") : "";
 
   // Build items block
-  const itemLines = ai.items.map((item, i) => {
-    const partInfo = item.partNumber ? `Part/CLIN #: ${item.partNumber}` : `Item ${i + 1}`;
-    return `  • ${partInfo}\n    Description: ${item.description}\n    Quantity: ${item.quantity} ${item.unit}`;
-  }).join("\n\n");
+  const itemLines = ai.items.map((item) => {
+    const label = item.partNumber ? `${item.partNumber} – ${item.description}` : item.description;
+    return `  • ${label} (Qty: ${item.quantity} ${item.unit})`;
+  }).join("\n");
 
-  // Subject line
-  const subjectLine = `Subject: Request for Quote – ${solNum} – ${opp.title}`;
-
-  // Full email body
+  // Full email body — simple, no solicitation details exposed
   const emailBody = [
-    subjectLine,
+    "Hi,",
     "",
-    "Dear Vendor,",
+    "Can you please provide me a quote for the following items:",
     "",
-    `My name is ${COMPANY.contact} and I am reaching out on behalf of ${COMPANY.name}. We are preparing a response to a U.S. Government solicitation and are requesting a competitive quote for the items listed below.`,
+    itemLines || "  (see attachment for item list)",
     "",
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-    "SOLICITATION DETAILS",
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-    `Solicitation Number : ${solNum}`,
-    `Title               : ${opp.title}`,
-    `Issuing Agency      : ${agency}`,
-    `Response Deadline   : ${deadlineStr}`,
-    `Delivery Location   : ${deliveryAddress}`,
-    ai.deliveryTerms ? `Delivery Terms      : ${ai.deliveryTerms}` : "",
+    ...(deliveryAddress ? [`Delivery address: ${deliveryAddress}`, ""] : []),
+    "Could you also let me know the lead time for these items?",
     "",
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-    "ITEMS REQUESTED",
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-    "",
-    itemLines || "  (See attached solicitation for full item list)",
-    "",
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-    "PLEASE INCLUDE IN YOUR QUOTE",
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-    "  • Unit price per item",
-    "  • Lead time / estimated delivery date",
-    "  • Country of origin (if applicable)",
-    "  • GSA schedule number or contract pricing (if available)",
-    "  • Any minimum order requirements or volume discounts",
-    "",
-    "Please reply at your earliest convenience. Our deadline for submitting to the government is " + deadlineStr + ".",
-    "",
-    "Thank you for your time and we look forward to working with you.",
-    "",
-    "Best regards,",
-    "",
-    COMPANY.contact,
-    COMPANY.name,
-    `Phone : ${COMPANY.phone}`,
-    `Email : ${COMPANY.email}`,
-    `UEI   : ${COMPANY.uei}   |   CAGE: ${COMPANY.cage}`,
-  ].filter((line) => line !== undefined).join("\n");
+    "Thank you",
+  ].join("\n");
 
   // Write each line as its own row for easy reading / copying
   const lines = emailBody.split("\n");
   for (const line of lines) {
     const cell = ws.getCell(`A${r}`);
     cell.value = line;
-    cell.font = { name: "Courier New", size: 10 };
+    cell.font = { name: "Calibri", size: 11 };
     cell.alignment = { wrapText: false, vertical: "middle" };
 
-    // Style dividers and headers
-    if (line.startsWith("━")) {
-      cell.font = { name: "Courier New", size: 10, color: { argb: "FF1F3864" } };
-    } else if (
-      line === "SOLICITATION DETAILS" ||
-      line === "ITEMS REQUESTED" ||
-      line === "PLEASE INCLUDE IN YOUR QUOTE"
-    ) {
-      cell.font = { name: "Courier New", size: 10, bold: true, color: { argb: "FF1F3864" } };
-      cell.fill = solidFill(LIGHT_BLUE);
-    } else if (line.startsWith("Subject:")) {
-      cell.font = { name: "Courier New", size: 11, bold: true };
-      cell.fill = solidFill(LIGHT_GRAY);
+    if (line === "Hi," || line === "Thank you") {
+      cell.font = { name: "Calibri", size: 11, bold: true };
     }
 
     ws.getRow(r).height = 15;
