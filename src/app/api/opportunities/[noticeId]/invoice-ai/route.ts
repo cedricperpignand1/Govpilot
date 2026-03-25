@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import OpenAI from "openai";
 import pdfParse from "pdf-parse";
+import mammoth from "mammoth";
 import fs from "fs";
 import path from "path";
 // Force Node.js runtime so pdf-parse is never bundled by webpack
@@ -102,10 +103,9 @@ async function fetchSamContent(url: string): Promise<{ text: string; error?: str
     // Detect PDF by magic bytes (%PDF) OR content-type — SAM.gov often
     // serves PDFs as application/octet-stream, so content-type alone is unreliable.
     const isPdf = contentType.includes("pdf") ||
-      (bytes.length > 4 && bytes.slice(0, 4).toString("ascii") === "%PDF");
+      (bytes.length > 4 && bytes.subarray(0, 4).toString("ascii") === "%PDF");
 
     if (isPdf) {
-      // Check cache before parsing — avoids re-fetching the same PDF
       const cached = cacheGet(pdfTextCache, url);
       if (cached) return { text: cached };
       try {
@@ -117,6 +117,26 @@ async function fetchSamContent(url: string): Promise<{ text: string; error?: str
         return { text: result.text };
       } catch (pdfErr) {
         return { text: "", error: `pdf-parse threw: ${String(pdfErr).slice(0, 300)} for ${url}` };
+      }
+    }
+
+    // Detect DOCX by content-type or URL extension — docx files are ZIP archives (PK magic bytes)
+    const isDocx = contentType.includes("wordprocessingml") ||
+      contentType.includes("officedocument") ||
+      url.toLowerCase().includes(".docx");
+
+    if (isDocx) {
+      const cached = cacheGet(pdfTextCache, url);
+      if (cached) return { text: cached };
+      try {
+        const result = await mammoth.extractRawText({ buffer: bytes });
+        if (!result.value?.trim()) {
+          return { text: "", error: `mammoth returned empty text for ${url}` };
+        }
+        cacheSet(pdfTextCache, url, result.value);
+        return { text: result.value };
+      } catch (docxErr) {
+        return { text: "", error: `mammoth threw: ${String(docxErr).slice(0, 300)} for ${url}` };
       }
     }
 
